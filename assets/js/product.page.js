@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   $('#sizeBtns').innerHTML = sizes.map(s => {
     const sold = stock.isSizeSold(p, s);
-    const custom = util.isCustomSize(s);
+    const custom = util.isCustomLabel(s);
     return `<button type="button" class="opt-btn ${s === state.size && !sold ? 'is-on' : ''} ${sold ? 'is-soldout' : ''}"
       data-size="${util.esc(s)}" ${sold ? 'disabled aria-disabled="true"' : ''} aria-label="${util.esc(s)}${sold ? ' — SOLD OUT' : ''}">
       <span class="opt-name">${util.esc(custom ? (CFG.CUSTOM_SIZE_LABEL || s) : s)}</span>${sold ? '<span class="sold-tag">SOLD OUT</span>' : ''}
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function syncCustomBox() {
     if (!customWrap) return;
-    const isCustom = util.isCustomSize(state.size);
+    const isCustom = util.isCustomLabel(state.size);
     customWrap.hidden = !isCustom;
     if (isCustom) {
       customWrap.classList.add('is-on');
@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $$('#sizeBtns .opt-btn').forEach(b => ON(b, 'click', () => {
     if (b.disabled || b.classList.contains('is-soldout')) return toast('المقاس ده نافد.', 'warn');
     state.size = b.dataset.size;
-    if (!util.isCustomSize(state.size)) state.sizeValue = '';
+    if (!util.isCustomLabel(state.size)) state.sizeValue = '';
     $$('#sizeBtns .opt-btn').forEach(x => x.classList.toggle('is-on', x === b));
     syncCustomBox();
   }));
@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (stock.isSoldOut(p) || !stock.hasSize(p)) { toast('المنتج ده نافد حاليًا.', 'warn'); return true; }
     if (state.size && stock.isSizeSold(p, state.size)) { toast('المقاس ده نافد — اختاري مقاس تاني.', 'warn'); return true; }
     if (state.color && stock.isColorSold(p, state.color)) { toast('اللون ده نافد — اختاري لون تاني.', 'warn'); return true; }
-    if (util.isCustomSize(state.size) && !util.validCustomSize(state.sizeValue)) {
+    if (util.isCustomLabel(state.size) && !util.validCustomSize(state.sizeValue)) {
       toast(`اكتبي رقم مقاسك (${CFG.CUSTOM_SIZE_MIN || 30}–${CFG.CUSTOM_SIZE_MAX || 70}).`, 'warn');
       customValue && customValue.focus();
       return true;

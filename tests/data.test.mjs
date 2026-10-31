@@ -175,6 +175,10 @@ test.describe('9.c) لوحة التحكم بتقرا وتكتب في awam-data',
     click(page.window, page.document.querySelector('.admin-tab[data-tab="orders"]'));
     await waitFor(() => /AW-900/.test(page.document.querySelector('#ordersList').textContent));
     assert.match(page.document.querySelector('#ordersList').textContent, /هدى/);
+    /* ⭐ المقاس الخاص بيظهر كرقم في الطلبات كمان (حتى لو محفوظ بالشكل القديم) */
+    const orders = page.document.querySelector('#ordersList').textContent;
+    assert.match(orders, /مقاس 42/);
+    assert.ok(!/مقاس خاص/.test(orders), 'الطلبات لسه بتعرض «مقاس خاص»');
     assert.match(mock.state.requests.map(r => r.url).join('\n'), /kind=eq\.order/);
     await closePage(page);
   });

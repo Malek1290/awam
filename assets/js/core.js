@@ -55,20 +55,17 @@
       return [...new Set(list)];
     },
 
-    /* ---------- المقاس الخاص ---------- */
-    isCustomSize(size) {
+    /* ---------- المقاس الخاص ----------
+       ⭐ الرقم اللي العميل بيكتبه هو اللي بيتحفظ وبيظهر —
+          مش كلمة «مقاس خاص». الكلمة دي مجرد شريحة يختارها،
+          وبعدها الرقم بياخد مكانها في السلة والطلب والواتساب.
+       ---------------------------------- */
+    /** الشريحة نفسها («مقاس خاص» / «مقاس مخصص» / custom) */
+    isCustomLabel(size) {
       const s = String(size == null ? '' : size).trim().toLowerCase();
       if (!s) return false;
       const list = (CFG.CUSTOM_SIZE_ALIASES || ['مقاس خاص']).map(x => String(x).toLowerCase());
       return list.includes(s) || s.startsWith('مقاس خاص') || s.startsWith('مقاس مخصص');
-    },
-    /** «مقاس خاص» + 42 → «مقاس خاص · 42» */
-    composeSize(size, value) {
-      const base = String(size == null ? '' : size).trim();
-      if (!this.isCustomSize(base)) return base;
-      const v = String(value == null ? '' : value).trim();
-      const label = CFG.CUSTOM_SIZE_LABEL || 'مقاس خاص';
-      return v ? `${label} · ${v}` : label;
     },
     /** رقم مقاس صالح؟ (30 – 70 افتراضيًا) */
     validCustomSize(value) {
@@ -77,11 +74,41 @@
       const n = Number(v);
       return n >= Number(CFG.CUSTOM_SIZE_MIN || 30) && n <= Number(CFG.CUSTOM_SIZE_MAX || 70);
     },
-    /** نص المقاس كما يظهر للعميل */
+    /** الرقم اللي جوه مقاس: «42» أو القديم «مقاس خاص · 42» → «42» */
+    customSizeNumber(size) {
+      const s = String(size == null ? '' : size).trim();
+      if (!s) return '';
+      if (/^\d{2,3}(\.\d)?$/.test(s)) return s;
+      const m = s.match(/·\s*(\d{2,3}(?:\.\d)?)\s*$/);
+      return m ? m[1] : '';
+    },
+    /** أي مقاس خاص (شريحة أو رقم) */
+    isCustomSize(size) {
+      return this.isCustomLabel(size) || !!this.customSizeNumber(size);
+    },
+    /** «مقاس خاص» + 42 → «42» (الرقم بس) — ملحوظة: بنحتفظ بالرقم زي ما هو */
+    composeSize(size, value) {
+      const base = String(size == null ? '' : size).trim();
+      if (!this.isCustomSize(base)) return base;
+      const v = String(value == null ? '' : value).trim();
+      if (!v) return this.customSizeNumber(base) || (CFG.CUSTOM_SIZE_LABEL || 'مقاس خاص');
+      /* الرقم زي ما العميل كتبه (حتى لو برّه المدى — التحقق بيمنعه قبل الإضافة) */
+      return v;
+    },
+    /** نص المقاس كما يظهر للعميل: «42» / «M» / «مقاس خاص» */
     sizeText(size) {
       const s = String(size == null ? '' : size).trim();
       if (!s) return '';
-      return this.isCustomSize(s) ? s : s;
+      const num = this.customSizeNumber(s);
+      if (num) return num;
+      if (this.isCustomLabel(s)) return CFG.CUSTOM_SIZE_LABEL || s;
+      return s;
+    },
+    /** سطر مقاس كامل: «مقاس 42» / «مقاس M» / «مقاس خاص» */
+    sizeLine(size) {
+      const t = this.sizeText(size);
+      if (!t) return '';
+      return this.isCustomLabel(t) ? t : `مقاس ${t}`;
     },
 
     /**
@@ -1236,7 +1263,7 @@
     L.push('— المنتجات —');
     order.items.forEach((i, n) => {
       L.push(`${n + 1}) ${i.title}${i.title_en ? ' / ' + i.title_en : ''}`);
-      if (i.size) L.push('   المقاس: ' + i.size);
+      if (i.size) L.push('   المقاس: ' + util.sizeText(i.size));
       if (i.color) L.push('   اللون: ' + i.color);
       L.push('   الكمية: ' + (i.qty || 1) + ' — السعر: ' + util.money((i.price || 0) * (i.qty || 1)));
       if (i.note) L.push('   ملاحظة: ' + i.note);
@@ -1477,7 +1504,7 @@
     const qCustomValue = m.querySelector('#qCustomValue');
     m.querySelectorAll('[data-q-size]').forEach(b => ON(b, 'click', () => {
       m.querySelectorAll('[data-q-size]').forEach(x => x.classList.toggle('is-on', x === b));
-      const custom = util.isCustomSize(b.dataset.qSize);
+      const custom = util.isCustomLabel(b.dataset.qSize);
       if (qCustomWrap) {
         qCustomWrap.hidden = !custom;
         if (custom) setTimeout(() => qCustomValue && qCustomValue.focus(), 30);
@@ -1494,7 +1521,7 @@
       if (baseSize && stock.isSizeSold(p, baseSize)) return toast('المقاس ده نافد — اختاري مقاس تاني.', 'warn');
       if (color && stock.isColorSold(p, color)) return toast('اللون ده نافد — اختاري لون تاني.', 'warn');
       let customValue = '';
-      if (util.isCustomSize(baseSize)) {
+      if (util.isCustomLabel(baseSize)) {
         customValue = (qCustomValue?.value || '').trim();
         if (!util.validCustomSize(customValue)) {
           qCustomValue?.focus();
@@ -1529,7 +1556,7 @@
       $('#drawerCount').textContent = items.reduce((sum, item) => sum + (item.qty || 1), 0);
       $('#drawerItems').innerHTML = items.map(item => {
         const key = `${item.id}__${item.size || ''}__${item.color || ''}`;
-        return `<article class="drawer-item" data-key="${util.esc(key)}"><img src="${util.img(item.image || item.image_url, true)}" alt=""><div class="drawer-item-info"><b>${util.esc(item.title)}</b><span>${[(item.size && (util.isCustomSize(item.size) ? util.esc(item.size) : `مقاس ${util.esc(item.size)}`)), item.color && util.esc(item.color)].filter(Boolean).join(' · ')}</span><strong>${util.money(item.price)}</strong></div><button type="button" class="drawer-remove" data-drawer-remove aria-label="حذف ${util.esc(item.title)}">×</button></article>`;
+        return `<article class="drawer-item" data-key="${util.esc(key)}"><img src="${util.img(item.image || item.image_url, true)}" alt=""><div class="drawer-item-info"><b>${util.esc(item.title)}</b><span>${[util.esc(util.sizeLine(item.size)), item.color && util.esc(item.color)].filter(Boolean).join(' · ')}</span><strong>${util.money(item.price)}</strong></div><button type="button" class="drawer-remove" data-drawer-remove aria-label="حذف ${util.esc(item.title)}">×</button></article>`;
       }).join('');
       $('#drawerEmpty').classList.toggle('hide', items.length > 0);
       $('#drawerFoot').classList.toggle('hide', !items.length);

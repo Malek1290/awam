@@ -62,7 +62,7 @@ function renderSummary() {
       <img src="${util.img(i.image || i.image_url, true)}" alt="">
       <div>
         <b>${util.esc(i.title)} <span class="muted">×${i.qty || 1}</span></b>
-        <span>${[i.size ? (util.isCustomSize(i.size) ? util.esc(i.size) : 'مقاس ' + util.esc(i.size)) : '', util.esc(i.color || '')].filter(Boolean).join(' · ')}</span>
+        <span>${[util.esc(util.sizeLine(i.size)), util.esc(i.color || '')].filter(Boolean).join(' · ')}</span>
       </div>
       <b style="font-size:13px">${util.money((i.price || 0) * (i.qty || 1))}</b>
     </div>`).join('');
@@ -203,7 +203,7 @@ async function placeOrder() {
       shipping: getShippingFee(),
       ship_option: shipOption,
       items: items.map(i => ({
-        id: i.id, title: i.title, size: i.size, color: i.color,
+        id: i.id, title: i.title, size: util.sizeText(i.size), color: i.color,
         qty: i.qty, price: i.price, image: i.image
       })),
       subtotal: cart.subtotal(),
@@ -224,7 +224,7 @@ async function placeOrder() {
   /* رسالة واتساب */
   const msg = buildOrderMessage({
     code, name, phone, city, address, notes,
-    items: items.map(i => ({ ...i, note: [i.size ? (util.isCustomSize(i.size) ? i.size : 'مقاس ' + i.size) : '', i.color || ''].filter(Boolean).join(' · ') })),
+    items: items.map(i => ({ ...i, size: util.sizeText(i.size), note: [util.sizeLine(i.size), i.color || ''].filter(Boolean).join(' · ') })),
     total: cart.subtotal() - cart.discount() + getShippingFee(),
     subtotal: cart.subtotal(),
     discount: coupons.breakdown(items).discount,

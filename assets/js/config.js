@@ -28,7 +28,7 @@ window.JL_CONFIG = {
 
   /* -------- كسر الكاش -------- */
   // كل ما تعدّلي أي ملف JS/CSS، غيّري الرقم ده + غيّري ?v= في ملفات HTML
-  ASSET_VERSION: "20261105v1",
+  ASSET_VERSION: "20261106v1",
 
   /* -------- الأسرار (لا تشاركها) -------- */
   ADMIN_TOKEN: "awam_secure_2026",      // الرابط السري:  index.html?admin=awam_secure_2026

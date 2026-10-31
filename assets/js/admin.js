@@ -529,7 +529,7 @@
     if (!box) return;
     box.innerHTML = sizeList().map(sz => {
       const on = state.sizes.has(sz);
-      const custom = util.isCustomSize(sz);
+      const custom = util.isCustomLabel(sz);
       return `<button type="button" class="sz ${on ? 'is-on' : ''}" data-size="${util.esc(sz)}">${util.esc(custom ? (CFG.CUSTOM_SIZE_LABEL || sz) : sz)}</button>`;
     }).join('');
     $$('#sizesBox .sz').forEach(b => ON(b, 'click', () => toggleSize(b)));
@@ -918,7 +918,7 @@
         const items = Array.isArray(o.items) ? o.items : [];
         return `<div class="order-row">
           <div class="o-head"><b>${util.esc(o.code || '—')}</b><span>${util.esc(o.customer_name || '')} · ${util.esc(o.phone || '')}</span></div>
-          <div class="o-items">${items.map(i => util.esc((i.title || '') + (i.size ? ' — ' + i.size : '') + (i.color ? ' / ' + i.color : '') + ' ×' + (i.qty || 1))).join('<br>')}</div>
+          <div class="o-items">${items.map(i => util.esc((i.title || '') + (i.size ? ' — ' + util.sizeLine(i.size) : '') + (i.color ? ' / ' + i.color : '') + ' ×' + (i.qty || 1))).join('<br>')}</div>
           <div class="o-items">الإجمالي: <b style="color:var(--brand-hover)">${util.money(o.total || 0)}</b> · ${util.esc(o.payment_method || '')}</div>
         </div>`;
       }).join('');
