@@ -1,20 +1,29 @@
 /* ============================================================
    عوام الدلنجات — supabase-update-5-all-in-awam-data.sql
+   ============================================================
+   ⚠️ الملف ده بيلامس كائن واحد بس:  public."awam-data"
+      + دوال/فيوهات اسمها بيبدأ بـ awam_ (وبس).
+
+   مفيش أي جدول تاني في الملف ده — لا قراءة، لا كتابة، لا تعديل.
+   مفيش orders، مفيش coupons، مفيش awam_settings، مفيش أي جدول
+   ممكن يكون فيه بيانات موقع تاني.
+
+   لو عندك أكتر من موقع على نفس مشروع Supabase:
+      ده ملف عوام وبس، وبيشتغل جوه جدول عوام وبس.
+      بيانات المواقع التانية مش هتتلمس ولا هتتقرا.
+
    ------------------------------------------------------------
-   ⭐ الهدف: كل حاجة في جدول واحد اسمه "awam-data"
-      منتجات + طلبات + كوبونات + إعدادات الشحن
-      ومفيش أي جدول مشترك مع أي موقع/مشروع تاني.
+   إيه اللي بيتغيّر جوه awam-data؟
+      • عمود kind يفرّق: product / order / coupon / setting
+      • أعمدة الطلبات (اسم، تليفون، عنوان…)
+      • أعمدة الكوبونات (كود، نسبة، تاريخ انتهاء…)
+      • أعمدة الإعدادات (key / value)
+      • فهارس + سياسات RLS + دالتين (awam_is_admin / awam_validate_coupon)
+      • ٣ فيوهات للعرض بس: awam_products / awam_orders / awam_coupons
 
-   العمود الجديد kind هو اللي بيفرّق بين الصفوف:
-      product  = منتج
-      order    = طلب
-      coupon   = كوبون خصم
-      setting  = إعدادات المتجر (أسعار الشحن)
-
-   الملف آمن:
-      • بيتشغّل أكتر من مرة من غير مشاكل (if not exists / create or replace)
-      • مفيش فيه DROP TABLE ولا DELETE ولا TRUNCATE
-      • مش بيلمس بياناتك القديمة — بس بيضيف أعمدة ويعلّم الصفوف الموجودة kind = product
+   مفيش أي صف موجود بيتشال:
+      • المنتجات الحالية بتتعلّم kind = 'product'
+      • مفيش DELETE ولا TRUNCATE ولا DROP TABLE
 
    طريقة التشغيل:
       Supabase → SQL Editor → New query → الصق الملف كله → Run
@@ -23,7 +32,28 @@
 begin;
 
 /* ------------------------------------------------------------
-   ١) الأعمدة الجديدة على awam-data
+   ٠) فحص أمان — لو الجدول مش موجود أو مش جدول عادي، الملف بيوقف
+      قبل ما يعمل أي تغيير
+   ------------------------------------------------------------ */
+do $$
+declare
+  kind_of_object "char";
+begin
+  if to_regclass('public."awam-data"') is null then
+    raise exception 'الجدول public."awam-data" مش موجود — مفيش أي تغيير اتعمل.';
+  end if;
+
+  select c.relkind into kind_of_object
+    from pg_class c
+   where c.oid = to_regclass('public."awam-data"');
+
+  if kind_of_object not in ('r', 'p') then
+    raise exception 'public."awam-data" مش جدول بيانات (relkind=%). الملف اتوقف من غير أي تغيير.', kind_of_object;
+  end if;
+end $$;
+
+/* ------------------------------------------------------------
+   ١) الأعمدة الجديدة — على awam-data وبس
    ------------------------------------------------------------ */
 alter table public."awam-data" add column if not exists kind text;
 
@@ -56,12 +86,12 @@ alter table public."awam-data" add column if not exists measurement_urls  jsonb 
 alter table public."awam-data" add column if not exists key   text;
 alter table public."awam-data" add column if not exists value jsonb;
 
-/* كل الصفوف الموجودة حاليًا منتجات */
+/* كل الصفوف الموجودة حاليًا منتجات عوام */
 update public."awam-data" set kind = 'product' where kind is null;
 alter table public."awam-data" alter column kind set default 'product';
 
 /* صفوف الطلبات مش هيكون فيها عنوان/سعر منتج — فبنفكّ أي NOT NULL
-   قديم على أعمدة المنتجات (من غير ما نلمس أي بيانات) */
+   قديم على أعمدة المنتجات (على awam-data وبس، ومن غير ما نلمس بيانات) */
 do $$
 declare col text;
 begin
@@ -74,12 +104,12 @@ begin
        and column_default is null
        and column_name not in ('id', 'kind')
   loop
-    execute format('alter table public.%I alter column %I drop not null', 'awam-data', col);
+    execute format('alter table public."awam-data" alter column %I drop not null', col);
   end loop;
 end $$;
 
 /* ------------------------------------------------------------
-   ٢) الفهارس
+   ٢) الفهارس — كلها على awam-data
    ------------------------------------------------------------ */
 create index if not exists awam_data_kind_idx
   on public."awam-data" (kind);
@@ -88,18 +118,16 @@ create index if not exists awam_data_orders_created_idx
   on public."awam-data" (created_at desc)
   where kind = 'order';
 
-/* كود الكوبون ميتكررش (بحروف كبيرة/صغيرة) */
 create unique index if not exists awam_data_coupon_code_uniq
   on public."awam-data" (lower(code))
   where kind = 'coupon' and code is not null;
 
-/* مفتاح الإعدادات ميتكررش (shipping) */
 create unique index if not exists awam_data_setting_key_uniq
   on public."awam-data" (kind, key);
 
 /* ------------------------------------------------------------
-   ٣) دالة الآدمن الخاصة بعوام (مستقلة تمامًا عن أي مشروع تاني)
-      بتقرا الهيدر x-jl-admin اللي الموقع بيبعته مع رمز الآدمن
+   ٣) دالة الآدمن — بتقرا هيدر x-jl-admin اللي الموقع بيبعته
+      (مش بتعتمد على دالة أي مشروع تاني)
    ------------------------------------------------------------ */
 create or replace function public.awam_is_admin()
 returns boolean
@@ -121,24 +149,26 @@ end;
 $$;
 
 /* ------------------------------------------------------------
-   ٤) Row Level Security
-      - القراءة العامة: المنتجات + الإعدادات + الكوبونات المفعّلة
-        (مش الطلبات — بيانات عملاء)
-      - إضافة طلب: مسموحة لأي زائر (ده اللي بيحصل وقت الشراء)
-      - التعديل والحذف: الآدمن بس
+   ٤) Row Level Security — على awam-data وبس
+      • الزائر يقرا: المنتجات + الكوبونات المفعّلة + الإعدادات
+      • الزائر يشوف الطلبات؟ ❌ (بيانات عملاء)
+      • الزائر يضيف طلب؟ ✅
+      • تعديل/حذف: الآدمن بس
    ------------------------------------------------------------ */
 alter table public."awam-data" enable row level security;
 
-/* بنقفل أي بوليسي قديم على الجدول قبل ما نكتب الجديد
-   (مفيش حذف بيانات — بوليسي = صلاحية قراءة/كتابة بس) */
+/* بنشيل السياسات القديمة من awam-data عشان نضمن إن مفيش سياسة قديمة
+   بتفتح الطلبات للزوار. (سياسات = صلاحيات، مش بيانات) */
 do $$
 declare p record;
 begin
   for p in
-    select policyname from pg_policies
-    where schemaname = 'public' and tablename = 'awam-data'
+    select policyname
+      from pg_policies
+     where schemaname = 'public'
+       and tablename = 'awam-data'
   loop
-    execute format('drop policy %I on public.%I', p.policyname, 'awam-data');
+    execute format('drop policy if exists %I on public."awam-data"', p.policyname);
   end loop;
 end $$;
 
@@ -176,7 +206,7 @@ create policy "awam admin delete"
 grant select, insert, update, delete on public."awam-data" to anon, authenticated;
 
 /* ------------------------------------------------------------
-   ٥) التحقق من الكوبون — من جوه awam-data
+   ٥) التحقق من الكوبون — بيقرا من awam-data بس
       الموقع بينادي: POST /rest/v1/rpc/awam_validate_coupon
    ------------------------------------------------------------ */
 create or replace function public.awam_validate_coupon(p_code text)
@@ -224,65 +254,83 @@ $$;
 grant execute on function public.awam_validate_coupon(text) to anon, authenticated;
 
 /* ------------------------------------------------------------
-   ٦) فيوهات للراحة في لوحة Supabase (اختيارية)
-      بتخليك تشوف المنتجات/الطلبات/الكوبونات كل واحد لوحده
-      مع إنهم كلهم في نفس الجدول
+   ٦) فيوهات للعرض في لوحة Supabase — بتتعمل بس لو مش موجودة
+      (لو فيه كائن بالاسم ده من قبل، الملف ما بيلمسوش)
    ------------------------------------------------------------ */
-create or replace view public.awam_products
-  with (security_invoker = true) as
-  select * from public."awam-data" where kind = 'product' or kind is null;
+do $$
+begin
+  if to_regclass('public.awam_products') is null then
+    execute $v$ create view public.awam_products with (security_invoker = true) as
+      select * from public."awam-data" where kind = 'product' or kind is null $v$;
+  end if;
 
-create or replace view public.awam_orders
-  with (security_invoker = true) as
-  select * from public."awam-data" where kind = 'order';
+  if to_regclass('public.awam_orders') is null then
+    execute $v$ create view public.awam_orders with (security_invoker = true) as
+      select * from public."awam-data" where kind = 'order' $v$;
+  end if;
 
-create or replace view public.awam_coupons
-  with (security_invoker = true) as
-  select * from public."awam-data" where kind = 'coupon';
+  if to_regclass('public.awam_coupons') is null then
+    execute $v$ create view public.awam_coupons with (security_invoker = true) as
+      select * from public."awam-data" where kind = 'coupon' $v$;
+  end if;
 
-grant select on public.awam_products, public.awam_orders, public.awam_coupons to anon, authenticated;
+  grant select on public.awam_products, public.awam_orders, public.awam_coupons to anon, authenticated;
+exception when others then
+  raise notice 'الفيوهات: %', sqlerrm;
+end $$;
 
-/* لو فيه فيو قديم اسمه awam_data (البديل اللي الموقع بيجرّبه) — بنخليه
-   security_invoker عشان يورّث صلاحيات RLS، ومايبقاش باب خلفي يبان منه
-   الطلبات من غير تسجيل دخول */
+/* ------------------------------------------------------------
+   ٧) فيو قديم باسم awam_data (لو موجود) — بنخليه يورّث RLS
+      عشان الطلبات ما تبانش منه. لو الكائن مش view → بنسيبه زي ما هو.
+   ------------------------------------------------------------ */
 do $$
 begin
   if exists (select 1 from pg_views where schemaname = 'public' and viewname = 'awam_data') then
-    execute 'create or replace view public.awam_data with (security_invoker = true) as select * from public."awam-data"';
+    begin
+      execute $v$ create or replace view public.awam_data with (security_invoker = true) as
+        select * from public."awam-data" $v$;
+      raise notice 'تم تأمين الفيو القديم awam_data (security_invoker).';
+    exception when others then
+      raise notice 'الفيو القديم awam_data اتساب زي ما هو (%).', sqlerrm;
+    end;
+  elsif to_regclass('public.awam_data') is not null then
+    raise notice 'فيه كائن اسمه awam_data مش view — اتساب زي ما هو من غير أي لمس.';
   end if;
 end $$;
 
 /* ------------------------------------------------------------
-   ٧) تحديث كاش PostgREST عشان الأعمدة الجديدة تظهر فورًا
+   ٨) تحديث كاش PostgREST (مش بيلمس بيانات — بس بيقرا شكل الجدول)
    ------------------------------------------------------------ */
 notify pgrst, 'reload schema';
 
 commit;
 
-/* ------------------------------------------------------------
-   ٨) تأكيد النتيجة (شغّل ده لوحده بعد الـ commit لو حبيت)
-   ------------------------------------------------------------ */
+/* ============================================================
+   ٩) تأكيد النتيجة — بعد ما الـ commit يخلص
+   ============================================================ */
+
+/* أ) إيه اللي جوه awam-data دلوقتي */
 select kind,
-       count(*) as rows,
+       count(*)                                  as rows,
        count(*) filter (where is_active is false) as inactive
   from public."awam-data"
  group by kind
  order by kind;
 
-/* ------------------------------------------------------------
-   (اختياري) نقل الطلبات القديمة من جدول orders المشترك
-   ------------------------------------------------------------
-   ⚠️ جدول orders ممكن يكون فيه طلبات موقع تاني — عشان كده
-      السكربت مش بينقل حاجة تلقائيًا. لو الجدول بتاعك بس،
-      شيل التعليق عن البلوك ده وشغّله.
+/* ب) إثبات إن كل التغييرات على awam-data وبس:
+      الكائنات اللي الملف عملها كلها بتبدأ بـ awam_ */
+select 'table'   as object_type, c.relname as name
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public' and c.relname in ('awam_products','awam_orders','awam_coupons')
+union all
+select 'function', p.proname
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public' and p.proname in ('awam_is_admin','awam_validate_coupon')
+order by 1, 2;
 
-   insert into public."awam-data"
-     (kind, code, customer_name, phone, city, address, notes,
-      payment_method, deposit, shipping, ship_option, subtotal,
-      discount, coupon_code, total, items, created_at)
-   select 'order', code, customer_name, phone, city, address, notes,
-          payment_method, deposit, shipping, ship_option, subtotal,
-          discount, coupon_code, total, items, created_at
-     from public.orders
-   on conflict do nothing;
-   ------------------------------------------------------------ */
+/* ج) سياسات RLS — لازم كلها تكون على awam-data بس */
+select tablename, policyname, cmd
+  from pg_policies
+ where schemaname = 'public'
+   and tablename = 'awam-data'
+ order by policyname;
