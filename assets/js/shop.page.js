@@ -1,17 +1,21 @@
 /* ============================================================
-   عوام AWAM — SHOP
+   عوام الدلنجات — SHOP
+   الأقسام بتيجي من config.js (مصدر واحد) + خريطة الأسماء القديمة
    ============================================================ */
 const { $, $$, ON, util, products, cardHTML } = window.JL;
+
+/* ⭐ «الكل» + الأقسام الأربعة: عبايات · عبايات سواريه · درسات · هوم وير */
 const AWAM_FILTERS = [
   { label: 'الكل', key: 'all' },
-  { label: 'عبايات', key: 'category:عبايات' },
-  { label: 'دلنجات', key: 'category:دلنجات' },
-  { label: 'استقبال', key: 'category:استقبال' }
+  ...util.categories().map(label => ({ label, key: `category:${label}` }))
 ];
 
 function matchesFilter(product, key) {
   if (key === 'all') return true;
-  if (key.startsWith('category:')) return String(product.category || '').toLowerCase() === key.slice(9).toLowerCase();
+  if (key.startsWith('category:')) {
+    /* util.category بتحوّل الأسماء القديمة (دلنجات → درسات، استقبال → عبايات سواريه) */
+    return String(util.category(product.category) || '').toLowerCase() === key.slice(9).toLowerCase();
+  }
   return true;
 }
 
@@ -22,8 +26,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const countEl = $('#resCount');
   const params = new URLSearchParams(location.search);
   let list = await products.all();
-  const requested = params.get('cat') || '';
-  const extraCategories = [...new Set(list.map(p => p.category).filter(Boolean))]
+  const requested = util.category(params.get('cat') || '');
+  const extraCategories = [...new Set(list.map(p => util.category(p.category)).filter(Boolean))]
     .filter(category => !AWAM_FILTERS.some(f => f.label.toLowerCase() === category.toLowerCase()));
   const filters = [...AWAM_FILTERS, ...extraCategories.map(category => ({ label: category, key: `category:${category}` }))];
   let active = requested

@@ -17,6 +17,7 @@ html.jl-loaded #jl-loader{display:none!important}
 #jl-loader .jl-loader-logo{width:120px;height:auto;aspect-ratio:679/299;object-fit:contain;display:block}
 #jl-loader .jl-loader-bar{width:100%;height:2px;background:#EFE7DC;border-radius:2px;overflow:hidden}
 #jl-loader .jl-loader-bar i{display:block;height:100%;width:0;background:#8C4A42;border-radius:2px;transition:width .2s linear}
+#jl-loader .jl-loader-sub{font-family:serif;font-size:12px;letter-spacing:0;color:#8C4A42;line-height:1;margin-top:-14px}
 #jl-loader .jl-loader-pct{font-family:system-ui,sans-serif;font-size:13px;letter-spacing:.2em;color:#8C4A42;direction:ltr}
 </style>
 <script data-cfasync="false">
@@ -42,13 +43,15 @@ html.jl-loaded #jl-loader{display:none!important}
   else start();
 })();
 </script>
-<title>المنتج · عوام</title>
+<title>المنتج · عوام الدلنجات</title>
 <link rel="icon" href="assets/img/brand/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="assets/img/brand/favicon.png">
-<link rel="preload" as="image" href="assets/img/brand/awam-wordmark-brown.png">
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<noscript><link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="assets/css/main.css?v=20261102v7">
+<link rel="preload" as="image" href="assets/img/brand/awam-wordmark-brown.png" type="image/png">
+<link rel="preconnect" href="https://ymsrfxmwwpwjgzzaytsh.supabase.co" crossorigin>
+<link rel="dns-prefetch" href="https://ymsrfxmwwpwjgzzaytsh.supabase.co">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:wght@400;500;600&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:wght@400;500;600&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="assets/css/main.css?v=20261103v1">
 </head>
 <body data-page="product">
 
@@ -79,7 +82,7 @@ html.jl-loaded #jl-loader{display:none!important}
         <!-- Product information -->
         <div class="pdp-info">
           <div class="pdp-top">
-            <span class="eyebrow" id="pdpCat">عوام</span>
+            <span class="eyebrow" id="pdpCat">عوام الدلنجات</span>
             <h1 class="pdp-title" id="pdpTitle">—</h1>
             <div class="pdp-price" id="pdpPrice"></div>
             <p class="pdp-desc" id="pdpDesc"></p>
@@ -95,6 +98,14 @@ html.jl-loaded #jl-loader{display:none!important}
               </button>
             </div>
             <div class="opt-grid" id="sizeBtns"></div>
+
+            <!-- ⭐ مقاس خاص: العميل يكتب رقم مقاسه -->
+            <div class="size-custom" id="customSizeWrap" hidden>
+              <label class="opt-label" for="customSizeValue">مقاس خاص — اكتبي رقم مقاسك</label>
+              <input class="input size-custom-input" id="customSizeValue" inputmode="numeric" autocomplete="off"
+                     placeholder="مثال: 42" aria-describedby="customSizeHint">
+              <span class="tiny muted" id="customSizeHint">من 30 لـ 70 — وبنتأكد منك على واتساب قبل التفصيل</span>
+            </div>
           </div>
 
           <!-- Colors -->
@@ -181,10 +192,10 @@ html.jl-loaded #jl-loader{display:none!important}
   </div>
 </div>
 
-<script data-cfasync="false" defer src="assets/js/config.js?v=20261102v7" type="text/javascript"></script>
-<script data-cfasync="false" defer src="assets/js/env.js?v=20261102v7" type="text/javascript"></script>
-<script data-cfasync="false" defer src="assets/js/core.js?v=20261102v7" type="text/javascript"></script>
-<script data-cfasync="false" defer src="assets/js/product.page.js?v=20261102v7" type="text/javascript"></script><!-- أمان: لو أي ملف JS فشل في التحميل، الـ loader مايقفلش الموقع للأبد -->
+<script data-cfasync="false" defer src="assets/js/config.js?v=20261103v1" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/env.js?v=20261103v1" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/core.js?v=20261103v1" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/product.page.js?v=20261103v1" type="text/javascript"></script><!-- أمان: لو أي ملف JS فشل في التحميل، الـ loader مايقفلش الموقع للأبد -->
 <script data-cfasync="false">
 setTimeout(function () {
   if (window.JL) return;

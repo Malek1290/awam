@@ -1,7 +1,7 @@
 /* ============================================================
    عوام AWAM — CART PAGE
    ============================================================ */
-const { $, $$, ON, util, cart, toast, icons, coupons } = window.JL;
+const { $, $$, ON, util, cart, toast, icons, coupons, settings } = window.JL;
 
 function rowHTML(i) {
   const key = `${i.id}__${i.size || ''}__${i.color || ''}`;
@@ -72,11 +72,17 @@ function render() {
   window.JL.revealWithin(list);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  /* ⭐ نفس أسعار الشحن اللي في صفحة إتمام الطلب (من إعدادات الآدمن) */
+  try { await settings.load(); } catch (_) {}
+  const syncShip = () => cart.setShipFee(settings.shippingFee('normal', cart.subtotal()));
+  syncShip();
   render();
+
   ON($('#goCheckout'), 'click', () => {
     if (!cart.get().length) return toast('سلتك فارغة', 'warn');
     location.href = 'checkout.html';
   });
-  ON(document, 'jl:cart', render);
+  ON(document, 'jl:cart', () => { syncShip(); render(); });
+  ON(document, 'jl:settings', () => { syncShip(); render(); });
 });

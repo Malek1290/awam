@@ -65,6 +65,13 @@
   --gutter:clamp(18px,4vw,56px);
 }
 
+/* ⭐ أداء الموبايل: الأقسام اللي تحت الشاشة مش بتترسم غير لما تقرب
+   (بيقلل وقت الـ main thread والـ Style/Layout في أول تحميل) */
+#story,.section--soft,.section--copper{content-visibility:auto;contain-intrinsic-size:auto 620px}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+
 /* ---------- reset ---------- */
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
@@ -120,9 +127,9 @@ ul{margin:0;padding:0;list-style:none}
 .container{width:100%;max-width:var(--container);margin-inline:auto;padding-inline:var(--gutter)}
 .section{padding-block:clamp(56px,8vw,120px)}
 .section--soft{background:var(--bg-secondary)}
-.section--copper{background:var(--color-primary-accent)}
+.section--copper{background:var(--color-accent-hover)}
 .section--copper .title-lg,.section--copper .display{color:#fff}
-.section--copper .lead{color:rgba(255,255,255,.85)}
+.section--copper .lead{color:rgba(255,255,255,.92)}
 .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:clamp(24px,3.4vw,48px);flex-wrap:wrap}
 .section-head .stack{display:grid;gap:8px}
 .section-head .stack .eyebrow{color:var(--brand-hover)}
@@ -170,7 +177,7 @@ ul{margin:0;padding:0;list-style:none}
   position:fixed;inset:0;z-index:9999;
   background:var(--bg-primary);
   display:grid;place-items:center;
-  transition:opacity .5s var(--ease);
+  transition:opacity .22s var(--ease);
 }
 #jl-loader.is-leaving{opacity:0;pointer-events:none}
 /* ⭐ بعد ما الموقع يجهز، الـ loader ممنوع يرجع تاني مهما حصل */
@@ -215,6 +222,15 @@ html.jl-loaded #jl-loader{display:none!important}
   justify-content:space-between;
 }
 .brand{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+/* ⭐ لوجو + «الدلنجات» تحته */
+.brand-lockup{display:grid;justify-items:center;gap:0;line-height:1}
+.brand-lockup picture{display:contents}
+.brand-sub{
+  font-family:var(--font-display);font-size:12.5px;line-height:1.15;
+  letter-spacing:0;color:var(--brand-hover);padding-top:1px;white-space:nowrap;
+}
+.brand-sub--footer{display:block;margin-top:6px;font-size:14px;opacity:.9}
+.footer-brand .brand{display:grid;justify-items:start;gap:2px}
 .brand-logo{height:44px;width:auto;object-fit:contain}
 .brand-logo--mark{display:none}
 .brand-name{font-family:var(--font-display);font-size:1.45rem;letter-spacing:.06em}
@@ -272,7 +288,7 @@ html.jl-loaded #jl-loader{display:none!important}
 .footer-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1.2fr;gap:40px}
 .footer-brand .brand-logo{height:52px}
 .footer-brand p{color:var(--ink-soft);font-size:14px;line-height:2;max-width:44ch;margin-top:14px}
-.site-footer h4{font-family:var(--font-display);font-size:1.05rem;margin-bottom:14px}
+.site-footer h4,.site-footer .footer-title{font-family:var(--font-display);font-size:1.05rem;margin-bottom:14px;color:var(--text-main)}
 .site-footer ul{display:grid;gap:10px}
 .site-footer a,.site-footer span{color:var(--ink-soft);font-size:14px;transition:color .3s var(--ease)}
 .site-footer a:hover{color:var(--brand-hover)}
@@ -301,7 +317,7 @@ html.jl-loaded #jl-loader{display:none!important}
   padding:10px 20px;border-radius:var(--radius-pill);font-size:13.5px;font-weight:500;
   transition:background .3s var(--ease);
 }
-.cookie-accept{background:var(--brand-primary);color:#fff}
+.cookie-accept{background:var(--brand-hover);color:#fff}
 .cookie-accept:hover{background:var(--brand-hover)}
 .cookie-essential{background:transparent;color:var(--bg-primary);box-shadow:inset 0 0 0 1px rgba(253,251,247,.4)}
 
@@ -369,7 +385,7 @@ html:not(.js-reveal) .reveal-lines{opacity:1;transform:none;transition:none}
 }
 
 /* ---------- marquee band ---------- */
-.band{background:var(--brand-primary);overflow:hidden;padding:14px 0}
+.band{background:var(--brand-hover);overflow:hidden;padding:14px 0}
 .marquee{display:flex;gap:0;white-space:nowrap;width:max-content;animation:marquee 28s linear infinite}
 .marquee span{
   font-size:13px;letter-spacing:.14em;color:#fff;
@@ -397,7 +413,7 @@ html:not(.js-reveal) .reveal-lines{opacity:1;transform:none;transition:none}
   background:var(--text-main);color:#fff;
 }
 .badge--sale{background:var(--color-sale)}
-.badge--new{background:var(--brand-primary)}
+.badge--new{background:var(--brand-hover)}   /* ⭐ تباين كافي مع النص الأبيض */
 .badge--best{background:var(--brand-hover)}
 .card-timed-badge{position:absolute;bottom:14px;inset-inline-start:14px;display:block;z-index:2}
 .card-old-badge{
@@ -583,6 +599,31 @@ html:not(.js-reveal) .reveal-lines{opacity:1;transform:none;transition:none}
 .opt-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .opt-label{font-size:14px;font-weight:500}
 .opt-grid{display:flex;gap:9px;flex-wrap:wrap}
+
+/* ---------- بانر SOLD OUT في صفحة المنتج ---------- */
+.pdp-soldout{
+  display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;
+  margin-top:16px;padding:13px 16px;border-radius:var(--radius-sm);
+  background:rgba(140,74,66,.10);border:1px solid rgba(140,74,66,.38);
+  color:var(--brand-hover);font-size:13px;line-height:1.8;
+}
+.pdp-soldout b{
+  font-family:var(--font-en);letter-spacing:.16em;font-size:12px;
+  background:var(--brand-hover);color:#fff;padding:3px 10px;border-radius:var(--radius-pill);
+}
+.pdp-soldout span{flex:1 1 220px;color:var(--text-main)}
+.btn:disabled,.btn.is-disabled{opacity:.55;cursor:not-allowed;pointer-events:none}
+
+/* ---------- مقاس خاص (العميل يكتب رقمه) ---------- */
+.size-custom{
+  display:grid;gap:8px;margin-top:14px;padding:14px 16px;
+  border:1px dashed rgba(140,74,66,.45);border-radius:var(--radius-sm);
+  background:rgba(197,140,115,.09);
+}
+.size-custom[hidden]{display:none!important}
+.size-custom .opt-label{color:var(--text-main);font-size:12.5px}
+.size-custom-input{max-width:190px;height:46px}
+.size-custom-input.is-invalid{border-color:var(--color-sale);box-shadow:0 0 0 3px rgba(140,74,66,.16)}
 .opt-btn{
   min-width:56px;padding:11px 16px;border-radius:var(--radius-sm);
   background:var(--color-card-bg);border:1px solid var(--line);
@@ -654,7 +695,7 @@ html:not(.js-reveal) .reveal-lines{opacity:1;transform:none;transition:none}
   border-radius:var(--radius-lg);padding:26px;
   display:grid;gap:14px;
 }
-.summary h3{font-family:var(--font-display);font-size:1.15rem;font-weight:400}
+.summary h2,.summary h3,.summary-title{font-family:var(--font-display);font-size:1.15rem;font-weight:400;margin:0 0 6px}
 .sum-row{display:flex;justify-content:space-between;font-size:14px;color:var(--ink-soft)}
 .sum-row b{color:var(--text-main);font-weight:600}
 .sum-discount{color:var(--color-sale)}
