@@ -489,7 +489,10 @@ describe('6) إتمام الطلب — الشحن كما هو', () => {
     d.querySelector('#cConfirm').dispatchEvent(new page.window.Event('change', { bubbles: true }));
     click(page.window, d.querySelector('#placeOrder'));
     await waitFor(() => page.fetchMock.state.inserts.length > 0);
-    const order = page.fetchMock.state.inserts[0].body;
+    const saved = page.fetchMock.state.inserts[0];
+    const order = [].concat(saved.body)[0];
+    assert.equal(saved.table, 'awam-data', 'الطلب لازم يتسجل في awam-data');
+    assert.equal(order.kind, 'order');
     assert.equal(order.shipping, 150);
     assert.equal(order.ship_option, 'remote');
     assert.equal(order.total, 4350);

@@ -92,21 +92,77 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
 
 /**
  * mock لـ fetch بيحاكي Supabase.
- * opts.settingsRow: null = الجدول مش موجود (404) · object = صف الشحن
+ * الحالة الجديدة: كل حاجة في جدول "awam-data" والعمود kind بيفرّق بينها.
+ *   withKind:false = شكل الجدول القديم (من غير عمود kind) لاختبار الاحتياطي
+ *   settingsRow    = صف إعدادات الشحن (جدول awam_settings القديم)
+ *   orders/coupons = صفوف جاهزة في awam-data
  */
-export function makeFetchMock({ products = PRODUCTS, settingsRow = null, onRequest = () => {} } = {}) {
-  const state = { products: products.map(p => ({ ...p })), requests: [], inserts: [] };
+export function makeFetchMock({
+  products = PRODUCTS,
+  settingsRow = null,
+  orders = [],
+  coupons = [],
+  withKind = true,
+  noRpc = false,
+  failOrderInsert = false,
+  onRequest = () => {}
+} = {}) {
+  const state = {
+    rows: [],          // كل صفوف awam-data
+    requests: [],
+    inserts: [],       // [{ table, body: array }]
+    withKind,
+    get products() { return this.rows.filter(r => !r.kind || r.kind === 'product'); },
+    get orders() { return this.rows.filter(r => r.kind === 'order'); },
+    get coupons() { return this.rows.filter(r => r.kind === 'coupon'); }
+  };
+
+  const withK = (row, kind) => (withKind ? { kind, ...row } : { ...row });
+  state.rows = [
+    ...products.map(p => withK(p, 'product')),
+    ...orders.map(o => withK(o, 'order')),
+    ...coupons.map(c => withK(c, 'coupon'))
+  ];
+  if (settingsRow) {
+    state.rows.push(withKind
+      ? { id: 'set-shipping', kind: 'setting', key: 'shipping', value: settingsRow }
+      : { id: 'set-shipping', key: 'shipping', value: settingsRow });
+  }
+
+  const json = (body, status = 200) => new Response(JSON.stringify(body), {
+    status, headers: { 'Content-Type': 'application/json' }
+  });
+  const arr = body => {
+    const parsed = typeof body === 'string' ? JSON.parse(body || '[]') : (body || []);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  };
 
   const mock = async (input, init = {}) => {
     const url = typeof input === 'string' ? input : input.url;
     const method = (init.method || 'GET').toUpperCase();
     state.requests.push({ url, method, headers: init.headers || {}, body: init.body });
 
-    // ---- Supabase REST ----
     if (url.includes('/rest/v1/')) {
-      const [tablePart, queryPart] = url.split('/rest/v1/')[1].split('?');
+      const [tablePart, queryPart = ''] = url.split('/rest/v1/')[1].split('?');
       const table = decodeURIComponent(tablePart);
+      const q = new URLSearchParams(queryPart);
 
+      /* ---- RPC ---- */
+      if (table.startsWith('rpc/')) {
+        const fn = table.slice(4);
+        if (noRpc) return json({ code: 'PGRST202', message: `Could not find the function public.${fn}` }, 404);
+        if (fn === 'awam_validate_coupon' || fn === 'validate_coupon') {
+          if (fn === 'validate_coupon') return json({ code: 'PGRST202', message: 'Could not find the function public.validate_coupon' }, 404);
+          const body = typeof init.body === 'string' ? JSON.parse(init.body || '{}') : (init.body || {});
+          const row = state.coupons.find(c => String(c.code || '').toUpperCase() === String(body.p_code || '').toUpperCase());
+          if (!row) return json({ ok: false, message: 'الكود غير صحيح أو منتهي الصلاحية.' });
+          if (row.active === false) return json({ ok: false, message: 'الكود ده متوقف.' });
+          return json({ ok: true, code: row.code, percent: row.percent, product_ids: row.product_ids || [], ends_at: row.ends_at || null });
+        }
+        return json({ code: 'PGRST202', message: `missing function ${fn}` }, 404);
+      }
+
+      /* ---- جدول الإعدادات القديم ---- */
       if (table === 'awam_settings' || table === 'awam_data_settings') {
         if (!settingsRow) {
           return json({ code: 'PGRST205', message: `Could not find the table 'public.${table}' in the schema cache` }, 404);
@@ -114,31 +170,72 @@ export function makeFetchMock({ products = PRODUCTS, settingsRow = null, onReque
         return json([{ key: 'shipping', value: settingsRow }]);
       }
 
+      /* ---- الجدول القديم للطلبات (fallback بس) ---- */
       if (table === 'orders') {
-        state.inserts.push({ table, body: JSON.parse(init.body || '[]') });
-        return json([{ id: 'ord-1', ...JSON.parse(init.body || '[]') }], 201);
+        const rows = arr(init.body);
+        state.inserts.push({ table, body: rows });
+        return json(rows.map((r, i) => ({ id: `legacy-${i}`, ...r })), 201);
+      }
+
+      if (table === 'awam-data' || table === 'awam_data') {
+        /* الجدول القديم: مفيش عمود kind */
+        if (!withKind && (q.has('kind') || /kind=/.test(queryPart))) {
+          return json({ code: '42703', message: 'column awam-data.kind does not exist' }, 400);
+        }
+
+        if (method === 'GET') {
+          const kindRaw = q.get('kind') || '';
+          const wantKind = kindRaw.startsWith('eq.') ? decodeURIComponent(kindRaw.slice(3)) : null;
+          let rows = state.rows;
+          if (wantKind) rows = rows.filter(r => String(r.kind || '') === wantKind);
+          else rows = rows.filter(r => !r.kind || r.kind === 'product');
+          if (q.get('active') === 'eq.true') rows = rows.filter(r => r.active !== false);
+          if (q.get('is_active') === 'neq.false') rows = rows.filter(r => r.is_active !== false);
+          if (q.get('id') && q.get('id').startsWith('eq.')) {
+            const id = decodeURIComponent(q.get('id').slice(3));
+            rows = rows.filter(r => String(r.id) === id);
+          }
+          const sel = q.get('select') || '*';
+          if (sel === 'key,value') rows = rows.map(r => ({ key: r.key, value: r.value }));
+          if (sel === 'id,title') rows = rows.map(r => ({ id: r.id, title: r.title }));
+          return json(rows);
+        }
+
+        if (method === 'POST') {
+          const rows = arr(init.body);
+          if (failOrderInsert && rows.some(r => r.kind === 'order')) {
+            return json({ code: 'PGRST000', message: 'mock: order insert failed' }, 503);
+          }
+          const saved = rows.map((r, i) => ({ id: r.id || `new-${Date.now()}-${i}`, ...r }));
+          for (const r of saved) {
+            const idx = state.rows.findIndex(x => String(x.id) === String(r.id));
+            const keyMatch = state.rows.findIndex(x => r.key && x.key === r.key && (x.kind || '') === (r.kind || ''));
+            if (idx >= 0) state.rows[idx] = { ...state.rows[idx], ...r };
+            else if (keyMatch >= 0) state.rows[keyMatch] = { ...state.rows[keyMatch], ...r };
+            else state.rows.push(r);
+          }
+          if (!withKind) {
+            return json(saved.map(({ kind, ...rest }) => rest), 201);
+          }
+          state.inserts.push({ table, body: saved });
+          return json(saved, 201);
+        }
+
+        if (method === 'PATCH') {
+          const id = decodeURIComponent((queryPart.split('id=eq.')[1] || '').split('&')[0] || '');
+          const patch = JSON.parse(init.body || '{}');
+          state.rows = state.rows.map(r => (String(r.id) === String(id) ? { ...r, ...patch } : r));
+          return json([{ id, ...patch }]);
+        }
+
+        if (method === 'DELETE') {
+          const id = decodeURIComponent((queryPart.split('id=eq.')[1] || '').split('&')[0] || '');
+          state.rows = state.rows.filter(r => String(r.id) !== String(id));
+          return json([], 200);
+        }
       }
 
       if (table === 'coupons') return json({ code: 'PGRST205', message: 'nope' }, 404);
-
-      if (table === 'awam-data' || table === 'awam_data') {
-        if (method === 'GET') return json(state.products.filter(p => p.is_active !== false));
-        if (method === 'PATCH') {
-          const id = decodeURIComponent((queryPart || '').split('id=eq.')[1] || '');
-          const patch = JSON.parse(init.body || '{}');
-          state.products = state.products.map(p => (String(p.id) === String(id) ? { ...p, ...patch } : p));
-          return json([{ id, ...patch }]);
-        }
-        if (method === 'POST') {
-          const parsed = JSON.parse(init.body || '[]');
-          const rows = Array.isArray(parsed) ? parsed : [parsed];
-          const added = rows.map((r, i) => ({ id: r.id || `new-${i}`, ...r }));
-          state.products = [...added, ...state.products];
-          state.inserts.push({ table, body: rows });
-          return json(added, 201);
-        }
-        if (method === 'DELETE') return json([], 204);
-      }
       return json({ code: 'PGRST205', message: 'unknown table' }, 404);
     }
 

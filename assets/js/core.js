@@ -199,15 +199,26 @@
         method: 'PATCH', body: patch, headers: { Prefer: 'return=representation' }
       });
     },
-    /* ⭐ إعدادات المتجر — جدول awam_settings صف واحد مفتاحه 'shipping' */
+    /* ⭐ إعدادات المتجر — صف واحد في awam-data (kind = setting, key = shipping) */
     async settingsUpsert(patch) {
-      const table = CFG.TABLE_SETTINGS || 'awam_settings';
       if (!patch || !Object.keys(patch).length) return true;
-      return this.req(`/rest/v1/${table}?on_conflict=key`, {
-        method: 'POST',
-        body: [{ key: 'shipping', value: patch }],
-        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }
-      });
+      const table = CFG.TABLE_ITEMS || 'awam-data';
+      try {
+        return await this.req(`/rest/v1/${table}?on_conflict=kind,key`, {
+          method: 'POST',
+          body: [{ kind: (CFG.KINDS && CFG.KINDS.SETTING) || 'setting', key: 'shipping', value: patch }],
+          headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }
+        });
+      } catch (e) {
+        /* الجدول الموحّد لسه مش متظبط → جدول الإعدادات القديم */
+        const legacy = CFG.LEGACY_SETTINGS_TABLE;
+        if (!legacy) throw e;
+        return await this.req(`/rest/v1/${legacy}?on_conflict=key`, {
+          method: 'POST',
+          body: [{ key: 'shipping', value: patch }],
+          headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }
+        });
+      }
     },
 
     remove(table, id) {
@@ -299,6 +310,48 @@
     remove: id => itemsTable.run(t => sb.remove(t, id))
   };
   sb.itemsTable = itemsTable;
+
+  /* ==========================================================
+     ⭐ كل البيانات في جدول واحد (awam-data)
+     ----------------------------------------------------------
+     العمود kind بيفرّق بين:
+        product | order | coupon | setting
+     قبل تشغيل supabase-update-5-all-in-awam-data.sql العمود مش
+     موجود — في الحالة دي بنقرا الجدول كله ونفلتر على العميل
+     (والمنتجات القديمة kind = null فبتتحسب منتجات).
+     ========================================================== */
+  const K = CFG.KINDS || { PRODUCT: 'product', ORDER: 'order', COUPON: 'coupon', SETTING: 'setting' };
+
+  const kindStore = {
+    _noKind: false,        // true = الجدول لسه مفيهوش عمود kind
+    isMissingKind(err) {
+      const m = String((err && err.message) || '');
+      return /42703|PGRST204|column .*kind.* does not exist|'kind' column|schema cache/i.test(m);
+    },
+    /** قراءة صفوف نوع معيّن من awam-data */
+    async select(kind, params = '', { select = '*' } = {}) {
+      if (!this._noKind) {
+        try {
+          const q = `select=${select}&kind=eq.${encodeURIComponent(kind)}${params ? '&' + params : ''}`;
+          const rows = await sb.items.select(q);
+          return (rows || []).filter(r => String(r.kind || '') === String(kind));
+        } catch (e) {
+          if (!this.isMissingKind(e)) throw e;
+          this._noKind = true;
+        }
+      }
+      /* وضع ما قبل الـ SQL: الجدول كله من غير kind — وكل صفوفه منتجات */
+      const rows = (await sb.items.select(`select=${select}${params ? '&' + params : ''}`)) || [];
+      if (kind === K.PRODUCT) return rows.filter(r => !r.kind || String(r.kind) === String(K.PRODUCT));
+      return rows.filter(r => String(r.kind || '') === String(kind));
+    },
+    /** إضافة صف */
+    insert(kind, row) { return sb.items.insert({ ...row, kind }); },
+    update(id, patch) { return sb.items.update(id, patch); },
+    remove(id) { return sb.items.remove(id); }
+  };
+  sb.kind = kindStore;
+  sb.KINDS = K;
 
   /* ==========================================================
      2) نظام حماية الآدمن (Token + localStorage)
@@ -476,21 +529,27 @@
         return res;
       }
 
+      /* ⭐ الكوبونات بقت جوه awam-data — بنسأل الدالة awam_validate_coupon
+         (أو نقرا الصفوف نفسها لو الدالة لسه مش متعملة) */
       let data;
       try {
-        data = await sb.req('/rest/v1/rpc/validate_coupon', { method: 'POST', body: { p_code: c } });
+        data = await sb.req(`/rest/v1/rpc/${CFG.COUPON_RPC || 'awam_validate_coupon'}`, { method: 'POST', body: { p_code: c } });
       } catch (e) {
-        const offline = /schema cache|does not exist|not find the function|failed to fetch|network|offline|timed out|load failed/i.test(e.message);
-        if (offline) {
-          const demo = { AWAM10: 10, WELCOME15: 15, EID20: 20 };
-          if (!demo[c]) throw new Error('الكود غير صحيح. كود تجريبي: AWAM10');
-          const res = { ok: true, code: c, percent: demo[c], product_ids: [], ends_at: null, demo: true };
-          this.save(res);
-          document.dispatchEvent(new CustomEvent('jl:coupon', { detail: res }));
-          console.warn('[AWAM] وضع كوبونات تجريبي — شغّل supabase-update-2.sql');
-          return res;
+        const offline = /schema cache|does not exist|not find the function|failed to fetch|network|offline|timed out|load failed|404/i.test(e.message);
+        if (!offline) throw new Error('تعذّر التحقق من الكود. حاول مرة أخرى.');
+        try {
+          data = await this._checkInTable(c);
+        } catch (e2) {
+          if (window.__JL_DEMO__) {
+            const demo = { AWAM10: 10, WELCOME15: 15, EID20: 20 };
+            if (!demo[c]) throw new Error('الكود غير صحيح. كود تجريبي: AWAM10');
+            const res = { ok: true, code: c, percent: demo[c], product_ids: [], ends_at: null, demo: true };
+            this.save(res);
+            document.dispatchEvent(new CustomEvent('jl:coupon', { detail: res }));
+            return res;
+          }
+          throw new Error(e2.message || 'تعذّر التحقق من الكود. حاول مرة أخرى.');
         }
-        throw new Error('تعذّر التحقق من الكود. حاول مرة أخرى.');
       }
       if (!data || !data.ok) throw new Error(data?.message || 'الكود غير صحيح أو منتهي الصلاحية.');
 
@@ -498,6 +557,28 @@
       this.save(res);
       document.dispatchEvent(new CustomEvent('jl:coupon', { detail: res }));
       return res;
+    },
+
+    /** ⭐ التحقق من الكوبون مباشرة من صفوف awam-data (kind = coupon) */
+    async _checkInTable(code) {
+      let rows = [];
+      try { rows = await sb.kind.select(K.COUPON, 'order=created_at.desc'); } catch (_) { rows = []; }
+      if (!rows.length && CFG.LEGACY_COUPONS_TABLE) {
+        try { rows = await sb.select(CFG.LEGACY_COUPONS_TABLE, 'select=*'); } catch (_) { rows = []; }
+      }
+      const row = (rows || []).find(r => String(r.code || '').trim().toUpperCase() === String(code).toUpperCase());
+      if (!row) throw new Error('الكود غير صحيح أو منتهي الصلاحية.');
+      if (row.active === false) throw new Error('الكود ده متوقف.');
+      const now = Date.now();
+      if (row.starts_at && new Date(row.starts_at).getTime() > now) throw new Error('الكود لسه مش مفعّل.');
+      if (row.ends_at && new Date(row.ends_at).getTime() <= now) throw new Error('الكود منتهي الصلاحية.');
+      return {
+        ok: true,
+        code: row.code,
+        percent: Number(row.percent) || 0,
+        product_ids: Array.isArray(row.product_ids) ? row.product_ids : [],
+        ends_at: row.ends_at || null
+      };
     },
 
     demoMode() { return !!(window.__JL_DEMO__); },
@@ -558,12 +639,12 @@
     all() { return this._cache || this._apply(); },
     get(key) { return this.all()[key]; },
 
-    /** تحميل من Supabase لو الجدول متاح */
+    /** تحميل من Supabase — ⭐ من awam-data (kind = setting) */
     async load({ force = false } = {}) {
       this._apply();
       if (this._remoteLoaded && !force) return this._cache;
-      try {
-        const rows = await sb.select(CFG.TABLE_SETTINGS || 'awam_settings', 'select=key,value');
+
+      const absorb = rows => {
         const map = {};
         (rows || []).forEach(r => {
           if (!r || !r.key) return;
@@ -571,12 +652,20 @@
           if (typeof v === 'string') { try { v = JSON.parse(v); } catch (_) {} }
           if (v && typeof v === 'object') Object.assign(map, v);
         });
-        if (Object.keys(map).length) {
-          this._cache = { ...this.defaults(), ...this.local(), ...map };
-          try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(this._cache)); } catch (_) {}
-        }
-        this._remoteLoaded = true;
-      } catch (_) { /* الجدول مش موجود — محلي فقط */ }
+        return map;
+      };
+
+      let map = {};
+      try { map = absorb(await sb.kind.select(K.SETTING, '', { select: 'key,value' })); } catch (_) {}
+      if (!Object.keys(map).length) {
+        /* توافق: جدول الإعدادات القديم (لو الـ SQL لسه ما اتشغّلش) */
+        try { map = absorb(await sb.select(CFG.LEGACY_SETTINGS_TABLE || 'awam_settings', 'select=key,value')); } catch (_) {}
+      }
+      if (Object.keys(map).length) {
+        this._cache = { ...this.defaults(), ...this.local(), ...map };
+        try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(this._cache)); } catch (_) {}
+      }
+      this._remoteLoaded = true;
       return this._cache;
     },
 
@@ -608,6 +697,45 @@
     }
   };
   settings._apply();
+
+  /* ==========================================================
+     3.e) طلبات لسه ما اتحفظتش (شبكة / الجدول لسه مش متظبط)
+     ----------------------------------------------------------
+     بنحفظها في المتصفح ونحاول نبعتها تاني في أول زيارة جاية —
+     كده مفيش أي كتابة في أي جدول برّه awam-data، والطلب
+     ميتضيّعش (وفوق ده كله العميل بيبعته واتساب).
+     ========================================================== */
+  const PENDING_KEY = 'aw_pending_orders_v1';
+
+  const pendingOrders = {
+    all() {
+      try { return JSON.parse(localStorage.getItem(PENDING_KEY)) || []; } catch (_) { return []; }
+    },
+    add(row) {
+      const list = this.all();
+      list.unshift({ ...row, queued_at: new Date().toISOString() });
+      try { localStorage.setItem(PENDING_KEY, JSON.stringify(list.slice(0, 20))); } catch (_) {}
+    },
+    removeAt(index) {
+      const list = this.all();
+      list.splice(index, 1);
+      try { localStorage.setItem(PENDING_KEY, JSON.stringify(list)); } catch (_) {}
+    },
+    /** إعادة إرسال أي طلب قديم — بترجع عدد اللي اتحفظ */
+    async flush() {
+      const list = this.all();
+      if (!list.length) return 0;
+      let sent = 0;
+      for (let i = list.length - 1; i >= 0; i--) {
+        try {
+          await sb.items.insert(list[i]);
+          this.removeAt(i);
+          sent++;
+        } catch (_) { break; }
+      }
+      return sent;
+    }
+  };
 
   /* ==========================================================
      4) المنتجات (Supabase + Demo fallback)
@@ -712,12 +840,21 @@
       if (_productsCache && !force) return _productsCache;
       let rows = [];
       try {
-        rows = await sb.items.select('select=*&order=sort.asc,created_at.desc');
+        /* ⭐ المنتجات بس من awam-data (الطلبات والكوبونات والإعدادات في نفس الجدول) */
+        try {
+          rows = await sb.items.select(`select=*&kind=eq.${K.PRODUCT}&order=sort.asc,created_at.desc`);
+        } catch (e) {
+          if (!kindStore.isMissingKind(e)) throw e;
+          kindStore._noKind = true;
+          rows = await sb.items.select('select=*&order=sort.asc,created_at.desc');
+        }
         if (!window.__JL_TABLE_LOGGED) {
           window.__JL_TABLE_LOGGED = true;
           console.info('[AWAM] المنتجات بتتقرأ من الجدول →', sb.itemsTable.table());
         }
-        rows = (rows || []).filter(r => r.is_active !== false);
+        rows = (rows || [])
+          .filter(r => !r.kind || String(r.kind) === String(K.PRODUCT))
+          .filter(r => r.is_active !== false);
       } catch (err) {
         console.warn('[AWAM] Supabase غير متاح — عرض منتجات العرض.', err.message);
         rows = [];
@@ -1576,6 +1713,6 @@
   /* ==========================================================
      التصدير
      ========================================================== */
-  window.JL = { CFG, $, $$, ON, util, sb, admin, cart, products, coupons, offer, stock, settings, cardHTML, initCountdowns, normalize,
+  window.JL = { CFG, $, $$, ON, util, sb, admin, cart, products, coupons, offer, stock, settings, pendingOrders, KINDS: K, kindStore, cardHTML, initCountdowns, normalize,
     couponBoxHTML, bindCouponBox, modal, toast, loader, waLink, buildOrderMessage, initAccordions, revealWithin, icons, logoSVG };
 })();
