@@ -28,7 +28,7 @@ window.JL_CONFIG = {
 
   /* -------- كسر الكاش -------- */
   // كل ما تعدّلي أي ملف JS/CSS، غيّري الرقم ده + غيّري ?v= في ملفات HTML
-  ASSET_VERSION: "20261104v1",
+  ASSET_VERSION: "20261105v1",
 
   /* -------- الأسرار (لا تشاركها) -------- */
   ADMIN_TOKEN: "awam_secure_2026",      // الرابط السري:  index.html?admin=awam_secure_2026
@@ -60,8 +60,11 @@ window.JL_CONFIG = {
   TABLE_ORDERS: "awam-data",             // ⭐ الطلبات جوه نفس الجدول (kind = order)
   TABLE_COUPONS: "awam-data",            // ⭐ الكوبونات جوه نفس الجدول (kind = coupon)
   TABLE_SETTINGS: "awam-data",           // ⭐ إعدادات الشحن جوه نفس الجدول (kind = setting)
-  /* جداول قديمة (مشتركة مع مشاريع تانية) — بنقرا منها بس في حالة إن الجدول
-     الموحّد لسه مش متظبط، عشان الموقع ميقفش قبل ما تشغّل ملف الـ SQL. */
+  /* ⛔ جداول قديمة — متسابة هنا للتوثيق بس، والموقع مش بيلمسها خالص.
+     لو عندك مواقع تانية على نفس مشروع Supabase، الأسماء دي ممكن تكون
+     بتاعتهم — عشان كده الموقع ما بيقراش منها ولا بيكتب فيها أبدًا.
+     لو يوم من الأيام حبيت ترجّع القراءة منها، خلي القيمة دي true. */
+  ALLOW_LEGACY_TABLES: false,
   LEGACY_ORDERS_TABLE: "orders",
   LEGACY_COUPONS_TABLE: "coupons",
   LEGACY_SETTINGS_TABLE: "awam_settings",

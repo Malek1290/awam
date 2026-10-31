@@ -69,12 +69,52 @@ test.describe('9.a) الإعدادات بتوجّه كل حاجة على awam-da
     assert.ok(!/drop\s+table|truncate\s+table|delete\s+from/i.test(sql), 'الملف فيه أمر خطر');
   });
 
-  test.it('ملف SQL بيتعامل مع جدول awam-data بس (مفيش جداول مشتركة)', async () => {
+  test.it('ملف SQL ما بيلمسش أي كائن برّه عوام', async () => {
     const raw = await read('supabase-update-5-all-in-awam-data.sql');
     const sql = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--[^\n]*/g, '');
-    assert.ok(!/\bfrom\s+public\.orders\b/i.test(sql), 'لسه بيقرا من جدول orders المشترك');
-    assert.ok(!/\binto\s+public\.coupons\b/i.test(sql), 'لسه بيكتب في جدول coupons المشترك');
-    assert.ok(!/alter table public\.(orders|coupons|awam_settings)\b/i.test(sql));
+
+    /* كل اسم بيبدأ بـ public. لازم يكون من كائنات عوام بس */
+    const allowed = new Set([
+      '"awam-data"', 'awam_data', 'awam_products', 'awam_orders', 'awam_coupons',
+      'awam_is_admin', 'awam_validate_coupon', '%I', 'pg_temp'
+    ]);
+    const refs = [...sql.matchAll(/public\.("[^"]+"|[A-Za-z_][\w-]*)/g)].map(m => m[1]);
+    const foreign = [...new Set(refs.filter(r => !allowed.has(r)))];
+    assert.deepEqual(foreign, [], `الملف بيلامس كائنات مش بتاعة عوام: ${foreign.join(', ')}`);
+  });
+
+  test.it('مفيش أمر كتابة أو مسح على أي جدول تاني', async () => {
+    const raw = await read('supabase-update-5-all-in-awam-data.sql');
+    const sql = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--[^\n]*/g, '');
+
+    const targets = [
+      /* ملاحظة: "for update" في سياسات RLS مش أمر تعديل — مستثنى */
+      ...sql.matchAll(/(?:insert\s+into|(?<!for\s)update|delete\s+from|alter\s+table|create\s+(?:unique\s+)?index\s+\w*\s*on|drop\s+table)\s+(?:if\s+exists\s+)?(?:only\s+)?([^\s(]+)/gi)
+    ].map(m => m[1].replace(/^public\./, ''));
+
+    for (const t of targets) {
+      assert.equal(t, '"awam-data"', `الملف بيكتب/يعدّل في ${t}`);
+    }
+  });
+
+  test.it('مفيش أي ذكر لجدول من مواقع تانية (حتى في التعليقات)', async () => {
+    const raw = await read('supabase-update-5-all-in-awam-data.sql');
+    assert.ok(!/\bpublic\.(orders|coupons|items|clothina\w*)\b/i.test(raw), 'الملف فيه ذكر لجدول مشترك');
+    assert.ok(!/\bfrom\s+public\.(orders|coupons)\b/i.test(raw));
+  });
+
+  test.it('الموقع مش بيقرا أي جدول قديم حتى لو موجود', async () => {
+    const cfg = await read('assets/js/config.js');
+    assert.match(cfg, /ALLOW_LEGACY_TABLES:\s*false/);
+
+    const core = (await read('assets/js/core.js')).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    /* كل استخدام لجدول قديم لازم يكون محكوم بالفلاج */
+    const legacyUses = [...core.matchAll(/CFG\.LEGACY_\w+_TABLE/g)];
+    assert.ok(legacyUses.length > 0, 'مفيش استخدام خالص (المفروض يبقى محكوم بالفلاج)');
+    for (const m of legacyUses) {
+      const line = core.slice(Math.max(0, m.index - 400), m.index);
+      assert.ok(/ALLOW_LEGACY_TABLES/.test(line), 'استخدام جدول قديم من غير فلاج الأمان');
+    }
   });
 });
 
@@ -222,9 +262,76 @@ test.describe('9.d) فشل حفظ الطلب — مفيش كتابة برّه aw
 });
 
 /* ============================================================
+   9.e) الموقع مش بيبعت ولا طلب لجدول برّه awam-data
+   ------------------------------------------------------------
+   ده المهم: لو عندك مواقع تانية على نفس مشروع Supabase،
+   الموقع ده ميعملش أي request على جداولهم — لا قراءة ولا كتابة.
+   ============================================================ */
+test.describe('9.e) صفر طلبات على أي جدول تاني', () => {
+  const cart = [{ id: 'p-abaya', title: 'عباية', price: 2200, qty: 1, size: 'M', color: 'بيج كريمي', image: 'assets/img/products/abaya-1.jpg' }];
+  const ADMIN = { aw_admin_v1: 'granted', aw_admin_v1_tok: 'awam_secure_2026' };
+  const FOREIGN = /\/rest\/v1\/(orders|coupons|awam_settings|awam_data_settings|items|clothina[^/?]*)(\?|$)/i;
+
+  const scan = (mock, label) => {
+    const hits = mock.state.requests.filter(r => FOREIGN.test(r.url));
+    assert.deepEqual(hits.map(h => `${h.method} ${h.url}`), [], `${label}: الموقع لمس جدول برّه عوام`);
+  };
+
+  test.it('الصفحة الرئيسية والمتجر', async () => {
+    for (const pageName of ['index.html', 'shop.html']) {
+      const mock = makeFetchMock({ noRpc: true });
+      const page = await openPage(server.base, pageName, { fetchMock: mock });
+      await waitFor(() => page.document.querySelectorAll('.card').length > 0);
+      await new Promise(r => setTimeout(r, 250));
+      scan(mock, pageName);
+      await closePage(page);
+    }
+  });
+
+  test.it('السلة والدفع — حتى لو الجدول لسه مش متظبط', async () => {
+    for (const pageName of ['cart.html', 'checkout.html']) {
+      const mock = makeFetchMock({ noRpc: true, failOrderInsert: true });
+      const page = await openPage(server.base, pageName, {
+        fetchMock: mock, storage: { aw_cart_v1: JSON.stringify(cart) }
+      });
+      await waitFor(() => page.document.querySelector('#goCheckout, #placeOrder'));
+      await new Promise(r => setTimeout(r, 350));
+      scan(mock, pageName);
+      await closePage(page);
+    }
+  });
+
+  test.it('لوحة التحكم بكل تاباتها', async () => {
+    const mock = makeFetchMock({ noRpc: true });
+    const page = await openPage(server.base, 'index.html', { fetchMock: mock, storage: ADMIN });
+    await waitFor(() => page.document.querySelector('#adminSheet'));
+    for (const tab of ['list', 'coupons', 'orders', 'settings']) {
+      const btn = page.document.querySelector(`.admin-tab[data-tab="${tab}"]`);
+      if (btn) click(page.window, btn);
+      await new Promise(r => setTimeout(r, 200));
+    }
+    scan(mock, 'admin');
+    await closePage(page);
+  });
+
+  test.it('كوبون غلط — بيدوّر في awam-data بس', async () => {
+    const mock = makeFetchMock({ noRpc: true, coupons: [] });
+    const page = await openPage(server.base, 'checkout.html', {
+      fetchMock: mock, storage: { aw_cart_v1: JSON.stringify(cart) }
+    });
+    await waitFor(() => page.document.querySelector('#couponInput'));
+    type(page.window, page.document.querySelector('#couponInput'), 'NOPE99');
+    click(page.window, page.document.querySelector('#couponApply'));
+    await waitFor(() => /الكود غير صحيح/.test(page.document.querySelector('#couponMsg').textContent), { timeout: 8000 });
+    scan(mock, 'coupon-miss');
+    await closePage(page);
+  });
+});
+
+/* ============================================================
    9.e) الكوبون في الشيك آوت — من نفس الجدول
    ============================================================ */
-test.describe('9.e) الكوبون بيتحقق من awam-data', () => {
+test.describe('9.f) الكوبون بيتحقق من awam-data', () => {
   const cart = [{ id: 'p-abaya', title: 'عباية', price: 2200, qty: 1, size: 'M', color: 'بيج كريمي', image: 'assets/img/products/abaya-1.jpg' }];
   const coupon = { id: 'cp-1', code: 'EID20', percent: 20, active: true, product_ids: [] };
 

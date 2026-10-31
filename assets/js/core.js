@@ -210,10 +210,10 @@
           headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }
         });
       } catch (e) {
-        /* الجدول الموحّد لسه مش متظبط → جدول الإعدادات القديم */
-        const legacy = CFG.LEGACY_SETTINGS_TABLE;
-        if (!legacy) throw e;
-        return await this.req(`/rest/v1/${legacy}?on_conflict=key`, {
+        /* ⛔ مفيش كتابة في أي جدول تاني — الإعدادات بتتحفظ محليًا وتتبعت
+           لـ awam-data في أول مرة يشتغل فيها */
+        if (CFG.ALLOW_LEGACY_TABLES !== true || !CFG.LEGACY_SETTINGS_TABLE) throw e;
+        return await this.req(`/rest/v1/${CFG.LEGACY_SETTINGS_TABLE}?on_conflict=key`, {
           method: 'POST',
           body: [{ key: 'shipping', value: patch }],
           headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }
@@ -333,8 +333,10 @@
       if (!this._noKind) {
         try {
           const q = `select=${select}&kind=eq.${encodeURIComponent(kind)}${params ? '&' + params : ''}`;
-          const rows = await sb.items.select(q);
-          return (rows || []).filter(r => String(r.kind || '') === String(kind));
+          const rows = (await sb.items.select(q)) || [];
+          /* لو الطلب طلب أعمدة معيّنة (من غير kind) الفلترة حصلت على السيرفر */
+          const hasKind = rows.some(r => r && Object.prototype.hasOwnProperty.call(r, 'kind'));
+          return hasKind ? rows.filter(r => String(r.kind || '') === String(kind)) : rows;
         } catch (e) {
           if (!this.isMissingKind(e)) throw e;
           this._noKind = true;
@@ -563,7 +565,8 @@
     async _checkInTable(code) {
       let rows = [];
       try { rows = await sb.kind.select(K.COUPON, 'order=created_at.desc'); } catch (_) { rows = []; }
-      if (!rows.length && CFG.LEGACY_COUPONS_TABLE) {
+      /* ⛔ مفيش قراءة من جدول كوبونات تاني (ممكن يكون بتاع موقع تاني) */
+      if (!rows.length && CFG.ALLOW_LEGACY_TABLES === true && CFG.LEGACY_COUPONS_TABLE) {
         try { rows = await sb.select(CFG.LEGACY_COUPONS_TABLE, 'select=*'); } catch (_) { rows = []; }
       }
       const row = (rows || []).find(r => String(r.code || '').trim().toUpperCase() === String(code).toUpperCase());
@@ -657,9 +660,10 @@
 
       let map = {};
       try { map = absorb(await sb.kind.select(K.SETTING, '', { select: 'key,value' })); } catch (_) {}
-      if (!Object.keys(map).length) {
-        /* توافق: جدول الإعدادات القديم (لو الـ SQL لسه ما اتشغّلش) */
-        try { map = absorb(await sb.select(CFG.LEGACY_SETTINGS_TABLE || 'awam_settings', 'select=key,value')); } catch (_) {}
+      /* ⛔ مفيش قراءة من أي جدول تاني — لو الجدول الموحّد لسه مش متظبط
+         بنستخدم القيم الافتراضية اللي في config.js (نفس الأسعار) */
+      if (!Object.keys(map).length && CFG.ALLOW_LEGACY_TABLES === true && CFG.LEGACY_SETTINGS_TABLE) {
+        try { map = absorb(await sb.select(CFG.LEGACY_SETTINGS_TABLE, 'select=key,value')); } catch (_) {}
       }
       if (Object.keys(map).length) {
         this._cache = { ...this.defaults(), ...this.local(), ...map };
