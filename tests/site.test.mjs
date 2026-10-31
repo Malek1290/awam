@@ -292,14 +292,22 @@ describe('4) صفحة المنتج — مقاسات XS→4XL ومقاس خاص',
     assert.ok(page.document.querySelector('#customSizeValue').classList.contains('is-invalid'));
   });
 
-  it('رقم صالح (42) بيتحفظ في السلة كـ «مقاس خاص · 42»', () => {
+  it('رقم صالح (42) بيتحفظ وبيظهر كرقم — من غير كلمة «مقاس خاص»', () => {
     type(page.window, page.document.querySelector('#customSizeValue'), '42');
-    assert.equal(page.document.querySelector('#sizeHint').textContent.trim(), 'مقاس خاص · 42');
+    assert.equal(page.document.querySelector('#sizeHint').textContent.trim(), '42');
     click(page.window, page.document.querySelector('#addToCart'));
     const items = page.window.JL.cart.get();
     assert.equal(items.length, 1);
-    assert.equal(items[0].size, 'مقاس خاص · 42');
+    assert.equal(items[0].size, '42');
+    assert.ok(!/مقاس خاص/.test(items[0].size), 'كلمة «مقاس خاص» لسه بتتحفظ');
     assert.equal(items[0].color, 'بيج كريمي');
+  });
+
+  it('الرقم اللي العميل كتبه هو اللي بيظهر في درج السلة', async () => {
+    await waitFor(() => page.document.querySelector('#drawerItems .drawer-item'));
+    const text = page.document.querySelector('#drawerItems .drawer-item').textContent;
+    assert.match(text, /مقاس 42/);
+    assert.ok(!/مقاس خاص/.test(text), 'لسه بيظهر «مقاس خاص»');
   });
 
   it('مفيش أخطاء JavaScript', () => {
@@ -385,23 +393,89 @@ describe('4.e) العرض السريع — نفس قواعد النفاد وال
     click(page.window, page.document.querySelector('#quickModal #quickAdd'));
     const items = page.window.JL.cart.get();
     assert.equal(items.length, 1);
-    assert.equal(items[0].size, 'مقاس خاص · 44');
+    assert.equal(items[0].size, '44');
   });
 });
 
 /* ============================================================
    4.f) درج السلة (Cart drawer)
    ============================================================ */
-describe('4.f) درج السلة بيعرض المقاس الخاص صح', () => {
-  it('بيكتب «مقاس خاص · 42» من غير تكرار كلمة مقاس', async () => {
+describe('4.f) درج السلة بيعرض الرقم اللي العميل كتبه', () => {
+  it('«مقاس 42» — الرقم بس من غير كلمة «مقاس خاص»', async () => {
+    const page = await openPage(server.base, 'index.html', {
+      storage: { aw_cart_v1: JSON.stringify([{ id: 'p-abaya', title: 'عباية', price: 2200, qty: 1, size: '42', color: 'بيج كريمي', image: 'assets/img/products/abaya-1.jpg' }]) }
+    });
+    await waitFor(() => page.document.querySelector('#drawerItems .drawer-item'));
+    const text = page.document.querySelector('#drawerItems .drawer-item').textContent;
+    assert.match(text, /مقاس 42/);
+    assert.ok(!/مقاس خاص/.test(text), 'لسه بيظهر «مقاس خاص»');
+    assert.ok(!/مقاس مقاس/.test(text), 'فيه تكرار لكلمة مقاس');
+    page.window.close();
+  });
+
+  it('السلة القديمة («مقاس خاص · 42») بتتعرض برضه كـ «مقاس 42»', async () => {
     const page = await openPage(server.base, 'index.html', {
       storage: { aw_cart_v1: JSON.stringify([{ id: 'p-abaya', title: 'عباية', price: 2200, qty: 1, size: 'مقاس خاص · 42', color: 'بيج كريمي', image: 'assets/img/products/abaya-1.jpg' }]) }
     });
     await waitFor(() => page.document.querySelector('#drawerItems .drawer-item'));
     const text = page.document.querySelector('#drawerItems .drawer-item').textContent;
-    assert.match(text, /مقاس خاص · 42/);
-    assert.ok(!/مقاس مقاس/.test(text), 'فيه تكرار لكلمة مقاس');
+    assert.match(text, /مقاس 42/);
+    assert.ok(!/مقاس خاص/.test(text), 'المقاس القديم لسه بيظهر بكلمة «مقاس خاص»');
     page.window.close();
+  });
+});
+
+/* ============================================================
+   4.g) المقاس الخاص = الرقم اللي العميل كتبه (مش كلمة «مقاس خاص»)
+   ============================================================ */
+describe('4.g) المقاس الخاص بيتحول لرقم في كل حتة', () => {
+  let page;
+  before(async () => {
+    page = await openPage(server.base, 'index.html');
+    await waitFor(() => page.window.JL);
+  });
+  after(() => page.window.close());
+
+  it('util.composeSize بيرجّع الرقم بس', () => {
+    const u = page.window.JL.util;
+    assert.equal(u.composeSize('مقاس خاص', '42'), '42');
+    assert.equal(u.composeSize('مقاس خاص', ' 56 '), '56');
+    assert.equal(u.composeSize('مقاس خاص', ''), 'مقاس خاص');
+    assert.equal(u.composeSize('M', '42'), 'M');
+  });
+
+  it('util.sizeText / sizeLine بيعرضوا الرقم', () => {
+    const u = page.window.JL.util;
+    assert.equal(u.sizeText('42'), '42');
+    assert.equal(u.sizeText('مقاس خاص · 42'), '42');
+    assert.equal(u.sizeText('مقاس خاص'), 'مقاس خاص');
+    assert.equal(u.sizeText('M'), 'M');
+    assert.equal(u.sizeLine('42'), 'مقاس 42');
+    assert.equal(u.sizeLine('مقاس خاص · 42'), 'مقاس 42');
+    assert.equal(u.sizeLine('M'), 'مقاس M');
+    assert.equal(u.sizeLine('مقاس خاص'), 'مقاس خاص');
+  });
+
+  it('الشريحة «مقاس خاص» بتفضل شريحة، والرقم بيتحسب مقاس خاص', () => {
+    const u = page.window.JL.util;
+    assert.equal(u.isCustomLabel('مقاس خاص'), true);
+    assert.equal(u.isCustomLabel('42'), false);
+    assert.equal(u.isCustomSize('مقاس خاص'), true);
+    assert.equal(u.isCustomSize('42'), true);
+    assert.equal(u.isCustomSize('مقاس خاص · 42'), true);
+    assert.equal(u.isCustomSize('M'), false);
+    assert.equal(u.isCustomSize('FREE SIZE'), false);
+  });
+
+  it('رسالة الواتساب فيها «المقاس: 42» من غير كلمة «مقاس خاص»', () => {
+    const msg = page.window.JL.buildOrderMessage({
+      code: 'AW-T1', name: 'منى', phone: '01000000000',
+      items: [{ title: 'عباية', size: '42', color: 'بيج كريمي', qty: 1, price: 2200 }],
+      subtotal: 2200, total: 2300, shipping: 100, deposit: 100,
+      payment: 'فودافون كاش', ship_option: 'normal'
+    });
+    assert.match(msg, /المقاس: 42/);
+    assert.ok(!/مقاس خاص/.test(msg), 'كلمة «مقاس خاص» لسه بتبان في الواتساب');
   });
 });
 
@@ -424,9 +498,10 @@ describe('5) صفحة السلة', () => {
     assert.equal(page.document.querySelectorAll('.cart-item').length, 2);
   });
 
-  it('المقاس الخاص بيظهر بنصه الكامل', () => {
+  it('المقاس الخاص بيظهر كرقم — «المقاس: 42»', () => {
     const opts = page.document.querySelector('.cart-item .cart-item-opts').textContent;
-    assert.match(opts, /مقاس خاص · 42/);
+    assert.match(opts, /المقاس:\s*42/);
+    assert.ok(!/مقاس خاص/.test(opts), 'لسه بيظهر «مقاس خاص»');
   });
 
   it('المجموع الفرعي = 2200 + (900×2)', () => {
@@ -514,6 +589,40 @@ describe('6.b) الشيك آوت مع أسعار من لوحة التحكم (125
     click(page.window, page.document.querySelector('.ship-option[data-ship="remote"]'));
     assert.equal(page.document.querySelector('#cTotal').textContent.trim(), '4,375 ج.م');
     assert.deepEqual(page.errors, []);
+    page.window.close();
+  });
+});
+
+/* ============================================================
+   6.c) المقاس الخاص في الشيك آوت والطلب
+   ============================================================ */
+describe('6.c) المقاس الخاص في إتمام الطلب', () => {
+  it('بيتعرض «مقاس 42» وبيتحفظ في الطلب كرقم', async () => {
+    const mock = makeFetchMock();
+    const cart = [{ id: 'p-abaya', title: 'عباية «ندى»', price: 4200, qty: 1, size: 'مقاس خاص · 42', color: 'بيج كريمي', image: 'assets/img/products/abaya-1.jpg' }];
+    const page = await openPage(server.base, 'checkout.html', {
+      fetchMock: mock, storage: { aw_cart_v1: JSON.stringify(cart) }
+    });
+    await waitFor(() => page.document.querySelector('#cTotal').textContent.includes('ج.م'));
+
+    const mini = page.document.querySelector('#miniList').textContent;
+    assert.match(mini, /مقاس 42/);
+    assert.ok(!/مقاس خاص/.test(mini), 'لسه بيظهر «مقاس خاص» في ملخص الطلب');
+
+    const d = page.document;
+    d.querySelector('#cName').value = 'منى';
+    d.querySelector('#cPhone').value = '01000000000';
+    d.querySelector('#cCity').value = 'البحيرة';
+    d.querySelector('#cAddress').value = 'دمنهور';
+    d.querySelector('#cConfirm').checked = true;
+    d.querySelector('#cConfirm').dispatchEvent(new page.window.Event('change', { bubbles: true }));
+    click(page.window, d.querySelector('#placeOrder'));
+
+    await waitFor(() => mock.state.inserts.length > 0);
+    const order = [].concat(mock.state.inserts[0].body)[0];
+    assert.equal(order.items[0].size, '42');
+    assert.ok(!/مقاس خاص/.test(JSON.stringify(order.items[0])), 'الطلب بيتسجل بكلمة «مقاس خاص»');
+    await new Promise(r => setTimeout(r, 250));   // نخلّي أي تحميل غير متزامن يخلص
     page.window.close();
   });
 });
@@ -635,5 +744,103 @@ describe('8) الأداء', () => {
   it('الأقسام تحت الشاشة بتترسم بكسل (content-visibility)', async () => {
     const css = await read('assets/css/main.css');
     assert.match(css, /content-visibility:auto/);
+  });
+});
+
+/* ============================================================
+   10) فحص شامل لكل صفحات الموقع
+   ============================================================ */
+const PAGES = ['index.html', 'shop.html', 'product.html?id=p-abaya', 'cart.html', 'checkout.html'];
+const CART_FIXTURE = JSON.stringify([
+  { id: 'p-abaya', title: 'عباية «ندى»', price: 2200, qty: 1, size: '42', color: 'بيج كريمي', image: 'assets/img/products/abaya-1.jpg' }
+]);
+
+describe('10) فحص شامل لكل صفحات الموقع', () => {
+  for (const page of PAGES) {
+    const file = page.split('?')[0];
+    it(`${file} بتفتح من غير أخطاء JS`, async () => {
+      const p = await openPage(server.base, page, {
+        fetchMock: makeFetchMock(),
+        storage: { aw_cart_v1: CART_FIXTURE }
+      });
+      await waitFor(() => p.window.JL, { timeout: 8000 });
+      await new Promise(r => setTimeout(r, 400));
+      assert.deepEqual(p.errors, [], `${file}: فيه أخطاء`);
+      assert.match(p.document.title, /عوام الدلنجات/, `${file}: العنوان مش بالاسم الجديد`);
+      assert.ok(p.document.querySelector('.brand'), `${file}: مفيش لوجو في الهيدر`);
+      assert.ok(p.document.querySelector('.footer, footer'), `${file}: مفيش فوتر`);
+      await new Promise(r => setTimeout(r, 150));
+      p.window.close();
+    });
+  }
+
+  it('مفيش أي رابط لصفحة مش موجودة في المشروع', async () => {
+    const missing = [];
+    for (const page of PAGES) {
+      const html = await read(page.split('?')[0]);
+      const links = [...html.matchAll(/href="([^"#?:]+)(?:\?[^"]*)?(?:#[^"]*)?"/g)]
+        .map(m => m[1])
+        .filter(href => /\.html$/i.test(href));
+      for (const href of new Set(links)) {
+        if (!(await exists(href))) missing.push(`${page.split('?')[0]} → ${href}`);
+      }
+    }
+    assert.deepEqual(missing, []);
+  });
+
+  it('كل صفحة بتستخدم المسار النسبي — مفيش localhost ولا روابط مكسورة', async () => {
+    for (const page of PAGES) {
+      const html = await read(page.split('?')[0]);
+      assert.ok(!/https?:\/\/(localhost|127\.0\.0\.1)/i.test(html), `${page}: فيه رابط localhost`);
+    }
+  });
+
+  it('مفيش أخطاء في الكونسول أثناء التنقل بين الصفحات (نفس التبويب)', async () => {
+    for (const page of PAGES) {
+      const p = await openPage(server.base, page, {
+        fetchMock: makeFetchMock(),
+        storage: { aw_cart_v1: CART_FIXTURE }
+      });
+      await waitFor(() => p.window.JL, { timeout: 8000 });
+      await new Promise(r => setTimeout(r, 250));
+      const bad = p.warnings.filter(w => /TypeError|ReferenceError|is not a function|undefined is not/i.test(w));
+      assert.deepEqual(bad, [], `${page}: تحذيرات خطأ`);
+      await new Promise(r => setTimeout(r, 100));
+      p.window.close();
+    }
+  });
+});
+
+describe('10.b) الموقع بيكمل شغل لو قاعدة البيانات وقعت', () => {
+  const deadFetch = async () => new Response(
+    JSON.stringify({ code: 'PGRST000', message: 'database is down' }),
+    { status: 500, headers: { 'Content-Type': 'application/json' } }
+  );
+
+  it('الرئيسية والمتجر بيعرضوا منتجات العرض من غير ما يقعوا', async () => {
+    for (const page of ['index.html', 'shop.html']) {
+      const p = await openPage(server.base, page, { fetchMock: deadFetch, storage: {} });
+      await waitFor(() => p.window.JL, { timeout: 8000 });
+      await waitFor(() => p.document.querySelectorAll('.card').length > 0, { timeout: 8000 });
+      assert.ok(p.document.querySelectorAll('.card').length > 0, `${page}: مفيش منتجات`);
+      assert.deepEqual(p.errors, [], `${page}: فيه أخطاء مع سقوط الداتابيز`);
+      await new Promise(r => setTimeout(r, 150));
+      p.window.close();
+    }
+  });
+
+  it('صفحة السلة والدفع بيفتحوا ويحسبوا الشحن من القيم الافتراضية', async () => {
+    for (const page of ['cart.html', 'checkout.html']) {
+      const p = await openPage(server.base, page, {
+        fetchMock: deadFetch, storage: { aw_cart_v1: CART_FIXTURE }
+      });
+      await waitFor(() => p.window.JL, { timeout: 8000 });
+      await new Promise(r => setTimeout(r, 400));
+      assert.deepEqual(p.errors, [], `${page}: فيه أخطاء مع سقوط الداتابيز`);
+      const total = p.document.querySelector('#sumShip, #cShip');
+      assert.ok(total && /ج\.م|مجاني/.test(total.textContent), `${page}: الشحن مش ظاهر`);
+      await new Promise(r => setTimeout(r, 150));
+      p.window.close();
+    }
   });
 });

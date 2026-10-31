@@ -15,7 +15,7 @@ function rowHTML(i) {
           ${i.title_en ? `<span class="en muted" style="font-size:11.5px;letter-spacing:.16em">${util.esc(i.title_en)}</span>` : ''}
         </a>
         <div class="cart-item-opts">
-          ${i.size ? `<span>المقاس: ${util.esc(i.size)}</span>` : ''}
+          ${i.size ? `<span>المقاس: ${util.esc(util.sizeText(i.size))}</span>` : ''}
           ${i.color ? `<span>اللون: ${util.esc(i.color)}</span>` : ''}
         </div>
         <div class="cart-item-opts"><span style="background:none;padding:0;color:var(--text-main);font-weight:500">${util.money(i.price)}</span></div>
