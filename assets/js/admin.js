@@ -54,7 +54,7 @@
     sheet.id = 'adminSheet';
     sheet.innerHTML = `
       <div class="admin-head">
-        <b>عوام أدمن <span class="tag en">ADMIN</span></b>
+        <b>${util.esc(util.siteName())} أدمن <span class="tag en">ADMIN</span></b>
         <button class="icon-btn" id="adminClose" aria-label="إغلاق">${icons.close}</button>
       </div>
       <div class="admin-tabs" role="tablist" aria-label="لوحة التحكم">
@@ -97,7 +97,7 @@
             <div class="field"><label>القسم</label>
               <select class="select-full" id="fCategory">
                 <option value="">— اختر —</option>
-                ${(CFG.CATEGORIES || []).map(c => `<option value="${util.esc(c)}">${util.esc(c)}</option>`).join('')}
+                ${util.categories().map(c => `<option value="${util.esc(c)}">${util.esc(c)}</option>`).join('')}
               </select>
             </div>
             <div class="field"><label>الخامة</label><input class="input" id="fFabric" placeholder="كريب مطفي"></div>
@@ -134,10 +134,12 @@
           <div class="field"><label>الوصف</label><textarea class="textarea" id="fDesc" placeholder="وصف قصير ومتكامل للمنتج…"></textarea></div>
 
           <div class="field">
-            <label>المقاسات المتاحة</label>
-            <div class="sizes-check" id="sizesBox">
-              ${(CFG.DEFAULT_SIZES || []).map(s => `<button type="button" class="sz" data-size="${util.esc(s)}">${util.esc(s)}</button>`).join('')}
-            </div>
+            <label>المقاسات المتاحة <span class="muted tiny">(XS → 4XL + مقاس خاص)</span></label>
+            <div class="sizes-check" id="sizesBox"></div>
+            <p class="tiny muted" style="margin:8px 0 0">
+              «${util.esc(CFG.CUSTOM_SIZE_LABEL || 'مقاس خاص')}» معناها إن العميل هيكتب رقم مقاسه بنفسه
+              (${CFG.CUSTOM_SIZE_MIN || 30}–${CFG.CUSTOM_SIZE_MAX || 70}).
+            </p>
             <input class="input mt-2" id="fCustomSize" placeholder="إضافة مقاس مخصص (Enter)">
           </div>
 
@@ -196,6 +198,11 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <span class="tiny muted">اختاري «تعديل» على أي منتج لتحديث الصور أو السعر أو العرض</span>
             <button class="btn btn--ghost btn--sm" id="refreshList">تحديث</button>
+          </div>
+          <div class="field" style="margin-bottom:12px">
+            <button class="btn btn--ghost btn--block" id="optimizeImages" type="button">⚡ تسريع الموقع — تحسين صور المنتجات (WebP)</button>
+            <p class="tiny muted" style="margin:6px 0 0">بيعمل نسخة مصغّرة (WebP) من كل صورة كبيرة وبيستخدمها في الموقع. الصور الأصلية بتفضل زي ما هي في الـ bucket.</p>
+            <p class="tiny muted" id="optMsg" style="margin:4px 0 0"></p>
           </div>
           <div class="admin-list" id="adminList"><div class="skeleton" style="height:56px"></div></div>
         </div>
@@ -337,20 +344,20 @@
     setupDrop($('#dropProducts'), files => addFiles(files), () => $('#fileProducts').click());
 
     /* مقاسات */
-    $$('#sizesBox .sz').forEach(b => ON(b, 'click', () => toggleSize(b)));
+    renderSizeChips();
     ON($('#fCustomSize'), 'keydown', e => {
       if (e.key !== 'Enter') return;
       e.preventDefault();
       const v = e.target.value.trim(); if (!v) return;
       if (![...state.sizes].includes(v)) {
         state.sizes.add(v);
-        const b = document.createElement('button');
-        b.type = 'button'; b.className = 'sz is-on'; b.textContent = v;
-        ON(b, 'click', () => toggleSize(b));
-        $('#sizesBox').appendChild(b);
+        renderSizeChips();
+        const b = $(`#sizesBox .sz[data-size="${v.replace(/"/g, '\\"')}"]`);
+        if (b) b.classList.add('is-on');
       }
       e.target.value = '';
     });
+    ON($('#optimizeImages'), 'click', optimizeProductImages);
 
     /* ألوان */
     $$('#colorsBox .sz').forEach(b => ON(b, 'click', () => toggleColor(b)));
@@ -507,6 +514,24 @@
   }
 
   /* ============================ مقاسات/ألوان ============================ */
+  /* ⭐ قائمة الشرائح = المقاسات الرسمية + أي مقاس قديم موجود على المنتج */
+  function sizeList() {
+    const base = (CFG.DEFAULT_SIZES || []).slice();
+    const extra = [...state.sizes].filter(s => !base.some(b => b.toLowerCase() === String(s).toLowerCase()));
+    return [...base, ...extra];
+  }
+  function renderSizeChips() {
+    const box = $('#sizesBox');
+    if (!box) return;
+    box.innerHTML = sizeList().map(sz => {
+      const on = state.sizes.has(sz);
+      const custom = util.isCustomSize(sz);
+      return `<button type="button" class="sz ${on ? 'is-on' : ''}" data-size="${util.esc(sz)}">${util.esc(custom ? (CFG.CUSTOM_SIZE_LABEL || sz) : sz)}</button>`;
+    }).join('');
+    $$('#sizesBox .sz').forEach(b => ON(b, 'click', () => toggleSize(b)));
+    renderSoldBoxes();
+  }
+
   /* ⭐ رسم قوائم «نافد» من المقاسات/الألوان المختارة */
   function renderSoldBoxes() {
     const sBox = $('#soldSizesBox');
@@ -591,7 +616,9 @@
       let done = 0;
       for (const im of state.images) {
         if (im.existing) { urls.push(im.url); continue; }
-        const u = await sb.upload(CFG.BUCKET_PRODUCTS, im.file);
+        /* ⭐ تصغير الصورة قبل الرفع — أسرع بكثير على الموبايل */
+        const small = await util.downscaleImage(im.file, { maxW: 1400, maxH: 1900, quality: 0.82 });
+        const u = await sb.upload(CFG.BUCKET_PRODUCTS, small);
         urls.push(u);
         done++;
         $('#upProgress i').style.width = `${Math.round((done / Math.max(1, toUpload.length)) * 80)}%`;
@@ -692,24 +719,24 @@
       $('#fTitleEn').value = row.title_en || '';
       $('#fPrice').value = row.price || '';
       $('#fOldPrice').value = row.old_price || '';
-      $('#fCategory').value = row.category || '';
+      /* لو القسم قديم/مش في القائمة، نضيفه كخيار عشان ما يتغيّرش بالغلط */
+      const catSel = $('#fCategory');
+      if (catSel) {
+        const want = row.category || '';
+        if (want && ![...catSel.options].some(o => o.value === want)) {
+          const opt = document.createElement('option');
+          opt.value = want; opt.textContent = want;
+          catSel.appendChild(opt);
+        }
+        catSel.value = want;
+      }
       $('#fFabric').value = row.fabric || '';
       $('#fDesc').value = row.description || '';
       $('#fBadge').value = row.badge || '';
       $('#fSort').value = row.sort || 0;
 
       state.sizes = new Set(row.sizes || []);
-      $$('#sizesBox .sz').forEach(b => {
-        b.classList.toggle('is-on', state.sizes.has(b.dataset.size));
-      });
-      [...state.sizes].forEach(s => {
-        if (!$(`#sizesBox .sz[data-size="${s}"]`)) {
-          const b = document.createElement('button');
-          b.type = 'button'; b.className = 'sz is-on'; b.dataset.size = s; b.textContent = s;
-          ON(b, 'click', () => toggleSize(b));
-          $('#sizesBox').appendChild(b);
-        }
-      });
+      renderSizeChips();
 
       $$('#colorsBox .sz').forEach(b => {
         b.classList.toggle('is-on', state.colors.some(c => c.name === b.dataset.color));
@@ -758,7 +785,8 @@
     state.soldSizes.clear(); state.soldColors.clear();
     if ($('#fSoldOutAll')) $('#fSoldOutAll').checked = false;
 
-    $$('#sizesBox .sz, #colorsBox .sz').forEach(b => b.classList.remove('is-on'));
+    $$('#colorsBox .sz').forEach(b => b.classList.remove('is-on'));
+    renderSizeChips();
     ['#fTitle', '#fTitleEn', '#fPrice', '#fOldPrice', '#fFabric', '#fDesc', '#fBadge', '#fOfferEnds', '#fOfferLabel', '#fGuideUrl']
       .forEach(s => { const el = $(s); if (el) el.value = ''; });
     $('#fSort').value = 0;
@@ -775,6 +803,68 @@
     if (notify) toast('تم إلغاء التعديل.');
   }
 
+  /* ============================ تسريع صور المنتجات ============================ */
+  /* بياخد كل صورة كبيرة على Supabase، يعمل منها نسخة WebP مصغّرة، يرفعها،
+     ويحدّث المنتج. الصور الأصلية بتفضل موجودة — مفيش أي حذف. */
+  async function optimizeProductImages() {
+    const btn = $('#optimizeImages');
+    const msg = $('#optMsg');
+    const say = t => { if (msg) msg.textContent = t; };
+    if (!confirm('هنعمل نسخة مصغّرة (WebP) من صور المنتجات الكبيرة وبنستخدمها في الموقع.\nالصور الأصلية هتفضل في الـ bucket زي ما هي.\n\nنكمل؟')) return;
+
+    btn.disabled = true;
+    let saved = 0, skipped = 0, failed = 0, changedProducts = 0;
+    try {
+      const rows = await sb.items.select('select=*&order=created_at.desc');
+      const list = (rows || []).map(normalize);
+      say(`جارٍ الفحص… 0/${list.length}`);
+      for (let idx = 0; idx < list.length; idx++) {
+        const p = list[idx];
+        const imgs = (p.images && p.images.length ? p.images : [p.image_url]).filter(Boolean);
+        const next = [];
+        let changed = false;
+        for (const src of imgs) {
+          if (!/^https?:\/\//i.test(src)) { next.push(src); continue; }       // صور الموقع المحلية — منسّقة أصلًا
+          if (/-opt1\.webp(\?|$)/i.test(src)) { next.push(src); continue; }    // متحسّنة قبل كده
+          try {
+            const res = await fetch(src, { mode: 'cors', cache: 'force-cache' });
+            if (!res.ok) throw new Error('fetch');
+            const blob = await res.blob();
+            if (blob.size < 150 * 1024) { next.push(src); skipped++; continue; }
+            const file = new File([blob], 'source.jpg', { type: blob.type || 'image/jpeg' });
+            const small = await util.downscaleImage(file, { maxW: 1200, maxH: 1600, quality: 0.8 });
+            if (!small || !small.size || small.size >= blob.size * 0.9) { next.push(src); skipped++; continue; }
+            const up = await sb.upload(CFG.BUCKET_PRODUCTS, small);
+            next.push(up);
+            saved += Math.max(0, blob.size - small.size);
+            changed = true;
+          } catch (e) {
+            failed++;
+            next.push(src);
+          }
+        }
+        if (changed) {
+          try {
+            await sb.items.update(p.id, { image_url: next[0], images: next });
+            changedProducts++;
+          } catch (e) { failed++; }
+        }
+        if ((idx + 1) % 2 === 0 || idx === list.length - 1) {
+          say(`جارٍ التحسين… ${idx + 1}/${list.length} · اتوفّر ${Math.round(saved / 1024)} كيلوبايت`);
+        }
+      }
+      products.invalidate();
+      say(`✓ خلصنا: ${changedProducts} منتج اتحدّث · اتوفّر ${Math.round(saved / 1024)} كيلوبايت · اتشال ${skipped} صورة صغيرة أصلًا · ${failed} صورة اتخطّت.`);
+      toast('تم تحسين صور المنتجات — الموقع بقى أخف على الموبايل.', 'ok');
+      loadList();
+    } catch (e) {
+      say('✕ ' + e.message);
+      toast('تعذّر تحسين الصور: ' + e.message, 'warn');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   /* ============================ قائمة المنتجات ============================ */
   async function loadList() {
     const box = $('#adminList');
@@ -786,7 +876,7 @@
       box.innerHTML = rows.map(r => {
         const n = normalize(r);
         return `<div class="admin-row">
-          <img src="${util.img(n.image_url, true)}" alt="">
+          <img src="${util.img(n.image_url, true)}" alt="" loading="lazy" decoding="async" width="44" height="52">
           <div class="meta"><b>${util.esc(n.title)}</b><span>${util.esc(n.category || '')}${n.category && n.fabric ? ' · ' : ''}${util.esc(n.fabric || '')}</span><span>${util.money(n.price)}${n.old_price ? ' · كان ' + util.money(n.old_price) : ''}</span></div>
           <div class="acts">
             <button class="btn-mini" data-edit="${util.esc(n.id)}">تعديل</button>

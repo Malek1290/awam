@@ -35,6 +35,110 @@
       let id; return (...a) => { clearTimeout(id); id = setTimeout(() => fn(...a), t); };
     },
     params() { return new URLSearchParams(location.search); },
+
+    /* ---------- هوية الموقع ---------- */
+    siteName() { return CFG.SITE_NAME || 'عوام الدلنجات'; },
+    siteShort() { return CFG.SITE_NAME_SHORT || 'عوام'; },
+    siteSuffix() { return CFG.SITE_SUFFIX || 'الدلنجات'; },
+
+    /* ---------- الأقسام ---------- */
+    /** اسم القسم النهائي — بيمرّ على خريطة الأسماء القديمة (دلنجات → درسات …) */
+    category(name) {
+      const raw = String(name == null ? '' : name).trim();
+      if (!raw) return '';
+      const map = CFG.CATEGORY_ALIASES || {};
+      return map[raw] || map[raw.toLowerCase()] || raw;
+    },
+    /** قائمة الأقسام الرسمية (من غير تكرار) */
+    categories() {
+      const list = (CFG.CATEGORIES || []).map(c => String(c).trim()).filter(Boolean);
+      return [...new Set(list)];
+    },
+
+    /* ---------- المقاس الخاص ---------- */
+    isCustomSize(size) {
+      const s = String(size == null ? '' : size).trim().toLowerCase();
+      if (!s) return false;
+      const list = (CFG.CUSTOM_SIZE_ALIASES || ['مقاس خاص']).map(x => String(x).toLowerCase());
+      return list.includes(s) || s.startsWith('مقاس خاص') || s.startsWith('مقاس مخصص');
+    },
+    /** «مقاس خاص» + 42 → «مقاس خاص · 42» */
+    composeSize(size, value) {
+      const base = String(size == null ? '' : size).trim();
+      if (!this.isCustomSize(base)) return base;
+      const v = String(value == null ? '' : value).trim();
+      const label = CFG.CUSTOM_SIZE_LABEL || 'مقاس خاص';
+      return v ? `${label} · ${v}` : label;
+    },
+    /** رقم مقاس صالح؟ (30 – 70 افتراضيًا) */
+    validCustomSize(value) {
+      const v = String(value == null ? '' : value).trim();
+      if (!/^\d{2,3}(\.\d)?$/.test(v)) return false;
+      const n = Number(v);
+      return n >= Number(CFG.CUSTOM_SIZE_MIN || 30) && n <= Number(CFG.CUSTOM_SIZE_MAX || 70);
+    },
+    /** نص المقاس كما يظهر للعميل */
+    sizeText(size) {
+      const s = String(size == null ? '' : size).trim();
+      if (!s) return '';
+      return this.isCustomSize(s) ? s : s;
+    },
+
+    /**
+     * ⭐ تصغير صورة قبل الرفع (أداء الموبايل)
+     * بيرجّع File/Blob جديد بـ WebP بعرض أقصى maxW، ولو المتصفح مش داعم بيرجّع الأصل.
+     */
+    async downscaleImage(file, { maxW = 1400, maxH = 1900, quality = 0.82 } = {}) {
+      try {
+        if (!file || !/^image\//i.test(file.type) || /image\/gif|image\/svg/i.test(file.type)) return file;
+        if (typeof createImageBitmap !== 'function' || typeof OffscreenCanvas !== 'function') {
+          return await this._canvasDownscale(file, { maxW, maxH, quality });
+        }
+        const bmp = await createImageBitmap(file);
+        const scale = Math.min(1, maxW / bmp.width, maxH / bmp.height);
+        if (scale >= 0.999 && file.size <= 240 * 1024) { bmp.close && bmp.close(); return file; }
+        const w = Math.max(1, Math.round(bmp.width * scale));
+        const h = Math.max(1, Math.round(bmp.height * scale));
+        const canvas = new OffscreenCanvas(w, h);
+        canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+        bmp.close && bmp.close();
+        const blob = await canvas.convertToBlob({ type: 'image/webp', quality });
+        if (!blob || blob.size >= file.size) return file;
+        const name = String(file.name || 'image').replace(/\.[^.]+$/, '') + '.webp';
+        return new File([blob], name, { type: 'image/webp', lastModified: Date.now() });
+      } catch (_) { return file; }
+    },
+    async _canvasDownscale(file, { maxW, maxH, quality }) {
+      /* لو المتصفح اتأخر في فك الصورة، بنرفع الأصل — مفيش انتظار لانهائي */
+      const guard = new Promise(res => setTimeout(() => res(file), 2500));
+      const work = await Promise.race([this._decodeAndScale(file, { maxW, maxH, quality }), guard]);
+      return work || file;
+    },
+    async _decodeAndScale(file, { maxW, maxH, quality }) {
+      return await new Promise(resolve => {
+        try {
+          const url = URL.createObjectURL(file);
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const scale = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight);
+              const w = Math.max(1, Math.round(img.naturalWidth * scale));
+              const h = Math.max(1, Math.round(img.naturalHeight * scale));
+              const c = document.createElement('canvas');
+              c.width = w; c.height = h;
+              c.getContext('2d').drawImage(img, 0, 0, w, h);
+              c.toBlob(blob => {
+                URL.revokeObjectURL(url);
+                if (!blob || blob.size >= file.size) return resolve(file);
+                resolve(new File([blob], String(file.name || 'image').replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' }));
+              }, 'image/webp', quality);
+            } catch (_) { URL.revokeObjectURL(url); resolve(file); }
+          };
+          img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+          img.src = url;
+        } catch (_) { resolve(file); }
+      });
+    },
     img(url, small) {
       if (!url) url = 'assets/img/products/abaya-1.jpg';
       if (!/^assets\/img\/[^/]+/i.test(url)) return url;
@@ -551,7 +655,7 @@
     return {
       ...row,
       id: row.id,
-      title: row.title || row.title_en || 'عباية عوام',
+      title: row.title || row.title_en || `قطعة من ${util.siteName()}`,
       title_en: row.title_en || '',
       price: Number(row.price) || 0,
       old_price: row.old_price ? Number(row.old_price) : null,
@@ -559,9 +663,9 @@
       images,
       sizes: (row.sizes && row.sizes.length ? row.sizes : CFG.DEFAULT_SIZES),
       colors: (row.colors && row.colors.length ? row.colors : []),
-      category: row.category || '',
+      category: util.category(row.category || ''),
       fabric: row.fabric || '',
-      description: row.description || 'عباية عوام مصنوعة بعناية بأجود الأقمشة.',
+      description: row.description || `${util.siteName()} — مصنوعة بعناية بأجود الأقمشة.`,
       badge: row.badge || '',
       size_guide_url: row.size_guide_url || '',
       /* ⭐ نفاد المخزون: مقاسات/ألوان موجودة في القائمة لكن «SOLD OUT» */
@@ -634,7 +738,13 @@
      ========================================================== */
   function toast(msg, kind = '') {
     let wrap = $('.toast-wrap');
-    if (!wrap) { wrap = document.createElement('div'); wrap.className = 'toast-wrap'; document.body.appendChild(wrap); }
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'toast-wrap';
+      wrap.setAttribute('role', 'status');
+      wrap.setAttribute('aria-live', 'polite');
+      document.body.appendChild(wrap);
+    }
     const el = document.createElement('div');
     el.className = 'toast ' + (kind ? 'toast--' + kind : '');
     el.innerHTML = `<span>${util.esc(msg)}</span>`;
@@ -674,8 +784,10 @@
     /* ⭐ نوقف المشغّل المدمج اللي اشتغل قبل تحميل الملف ده */
     try { window.__JL_LOADER_INLINE_STOP && window.__JL_LOADER_INLINE_STOP(); } catch (_) {}
 
-    const MIN_MS = 500;
-    const MAX_MS = 2200;
+    /* ⭐ الأداء: مفيش أي انتظار مصطنع — الصفحة تتكشف أول ما الـ DOM يجهز.
+       (قبل كده كان فيه انتظار ٥٠٠ms لحد ٢٢٠٠ms كان بيأخّر أول رسم على الموبايل) */
+    const MIN_MS = 0;
+    const MAX_MS = 1200;
     const started = Date.now();
     const pctEl = $('.jl-loader-pct', el);
     const bar = $('.jl-loader-bar', el);
@@ -709,8 +821,8 @@
       const out = () => {
         if (!el.isConnected) return revealPage();
         el.classList.add('is-leaving');
-        // مدة الـ fade في CSS 0.5s — نستنى 420ms بس ونشيل العنصر
-        setTimeout(revealPage, 420);
+        // مدة الـ fade في CSS 0.22s — نستنى 210ms بس ونشيل العنصر
+        setTimeout(revealPage, 210);
       };
       // نستنى باقي الحد الأدنى فقط، مش أكتر
       setTimeout(out, Math.max(0, MIN_MS - (Date.now() - started)));
@@ -842,15 +954,28 @@
 
   function chrome() {
     const page = document.body.dataset.page || 'home';
+    const SITE = util.siteName();
+    const SUB = util.siteSuffix();
+    /* ⭐ اللوجو زي ما هو + «الدلنجات» مكتوبة تحته بخط الموقع */
+    const brandLockup = (cls) => `
+      <span class="brand-lockup ${cls || ''}">
+        <picture class="brand-word-wrap">
+          <img class="brand-logo brand-logo--word" src="${LOGO_WORD}" alt="${util.esc(SITE)}" width="679" height="299" decoding="async">
+        </picture>
+        <picture class="brand-mark-wrap">
+          <source type="image/webp" srcset="assets/img/brand/awam-crest-brown.webp">
+          <img class="brand-logo brand-logo--mark" src="${LOGO_MARK}" alt="" width="400" height="400" decoding="async">
+        </picture>
+        <span class="brand-sub" aria-hidden="true">${util.esc(SUB)}</span>
+      </span>`;
     const header = `
       <div class="announce">
-        <span>🎉 خصم خاص على تشكيلة الدلنجات — توصيل مجّاني داخل البحيرة</span>
+        <span>🎉 توصيل مجّاني داخل البحيرة — تشكيلة ${util.esc(SITE)} الجديدة</span>
       </div>
       <header class="site-header" id="siteHeader">
         <div class="container header-inner">
-          <a class="brand" href="index.html" aria-label="عوام">
-            <img class="brand-logo brand-logo--word" src="${LOGO_WORD}" alt="عوام" width="679" height="299">
-            <img class="brand-logo brand-logo--mark" src="${LOGO_MARK}" alt="عوام" width="400" height="400">
+          <a class="brand" href="index.html" aria-label="${util.esc(SITE)} — الصفحة الرئيسية">
+            ${brandLockup('brand-lockup--header')}
           </a>
           <nav class="nav" aria-label="القائمة الرئيسية">
             <a href="index.html" class="${page === 'home' ? 'is-active' : ''}">الرئيسية</a>
@@ -883,21 +1008,22 @@
           <div class="footer-grid">
             <div class="footer-brand">
               <div class="brand">
-                <img class="brand-logo" src="${LOGO_WORD_LIGHT}" alt="عوام" width="679" height="299">
+                <picture>
+                  <img class="brand-logo" src="${LOGO_WORD_LIGHT}" alt="${util.esc(SITE)}" width="679" height="299" loading="lazy" decoding="async">
+                </picture>
+                <span class="brand-sub brand-sub--footer">${util.esc(SUB)}</span>
               </div>
-              <p>بوتيك عوام في البحيرة — عبايات، دلنجات، واستقبال. أناقة تُليق بك في كل مناسبة، بتوصيل سريع داخل البحيرة ومحافظات مصر.</p>
+              <p>${util.esc(SITE)} — بوتيك دلنجات وعبايات في البحيرة. قطع بتتفصّل بعناية، بتوصيل سريع داخل البحيرة ومحافظات مصر.</p>
             </div>
             <div>
-              <h4>الأقسام</h4>
+              <p class="footer-title">الأقسام</p>
               <ul>
                 <li><a href="shop.html">كل المنتجات</a></li>
-                <li><a href="shop.html?cat=${encodeURIComponent('عبايات')}">عبايات</a></li>
-                <li><a href="shop.html?cat=${encodeURIComponent('دلنجات')}">دلنجات</a></li>
-                <li><a href="shop.html?cat=${encodeURIComponent('استقبال')}">استقبال</a></li>
+                ${util.categories().map(c => `<li><a href="shop.html?cat=${encodeURIComponent(c)}">${util.esc(c)}</a></li>`).join('')}
               </ul>
             </div>
             <div>
-              <h4>خدماتنا</h4>
+              <p class="footer-title">خدماتنا</p>
               <ul>
                 <li><a href="cart.html">السلة</a></li>
                 <li><a href="#" data-open-guide>دليل المقاسات</a></li>
@@ -906,7 +1032,7 @@
               </ul>
             </div>
             <div>
-              <h4>تواصل معنا</h4>
+              <p class="footer-title">تواصل معنا</p>
               <ul>
                 <li><a href="https://wa.me/${CFG.WHATSAPP_NUMBER}" target="_blank" rel="noopener">واتساب · 01129196650</a></li>
                 <li><a href="${CFG.TIKTOK}" target="_blank" rel="noopener">تيك توك · ${CFG.TIKTOK_HANDLE}</a></li>
@@ -916,7 +1042,7 @@
             </div>
           </div>
           <div class="footer-bottom">
-            <span>© ${new Date().getFullYear()} عوام — بوتيك العبايات</span>
+            <span>© ${new Date().getFullYear()} ${util.esc(SITE)} — بوتيك الدلنجات والعبايات</span>
             <span>صُنع بعناية <i class="admin-dot" id="adminDot" title="لوحة التحكم"></i></span>
           </div>
         </div>
@@ -946,7 +1072,7 @@
       a.id = 'waFab'; a.className = 'wa-fab';
       a.target = '_blank'; a.rel = 'noopener';
       a.setAttribute('aria-label', 'تواصل معنا على واتساب');
-      a.href = waLink('مرحباً بـ عوام ✦ عندك استفسار عن عباية أو طلب؟');
+      a.href = waLink('مرحباً بـ ' + util.siteName() + ' ✦ عندك استفسار عن دلنجة أو عباية أو طلب؟');
       a.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.7-4.7A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.6 9.4c.4 2.2 2 3.8 4.2 4.2l1-1.2 1.8.7c-.3 1.2-1.4 1.9-2.6 1.8-2.9-.3-5.2-2.6-5.5-5.5-.1-1.2.6-2.3 1.8-2.6l.7 1.8-1.4.8Z"/></svg>`;
       document.body.appendChild(a);
     }
@@ -957,7 +1083,7 @@
      ========================================================== */
   function buildOrderMessage(order) {
     const L = [];
-    L.push('✦ طلب جديد — عوام ✦');
+    L.push('✦ طلب جديد — ' + util.siteName() + ' ✦');
     L.push('رقم الطلب: ' + order.code);
     L.push('');
     L.push('— بيانات العميل —');
@@ -1012,7 +1138,7 @@
     }
     if (order.notes) { L.push(''); L.push('ملاحظات: ' + order.notes); }
     L.push('');
-    L.push('مستمتع من متجر عوام 🕊️');
+    L.push('مستمتع من متجر ' + util.siteName() + ' 🕊️');
     return L.join('\n');
   }
 
@@ -1059,18 +1185,21 @@
           </tr>
         </thead>
         <tbody>
-          ${[
+          ${((CFG.SIZE_GUIDE && CFG.SIZE_GUIDE.length) ? CFG.SIZE_GUIDE : [
+            ['XS', '76–80', '58–62', '84–88', '136'],
             ['S', '80–84', '62–66', '88–92', '140'],
             ['M', '84–88', '66–70', '92–96', '142'],
             ['L', '88–92', '70–74', '96–100', '144'],
             ['XL', '92–98', '74–80', '100–106', '146'],
-            ['XXL', '98–104', '80–86', '106–112', '148'],
+            ['2XL', '98–104', '80–86', '106–112', '148'],
+            ['3XL', '104–110', '86–92', '112–118', '150'],
+            ['4XL', '110–118', '92–100', '118–126', '152'],
             ['FREE SIZE', '90–110', '70–95', '95–120', '150']
-          ].map(r => `<tr>${r.map((c, i) => `<td style="padding:10px;border-bottom:1px solid var(--line);${i === 0 ? 'font-weight:500' : 'color:var(--ink-soft)'}">${c}</td>`).join('')}</tr>`).join('')}
+          ]).map(r => `<tr>${r.map((c, i) => `<td style="padding:10px;border-bottom:1px solid var(--line);${i === 0 ? 'font-weight:500' : 'color:var(--ink-soft)'}">${c}</td>`).join('')}</tr>`).join('')}
         </tbody>
       </table>
     </div>
-    <p class="tiny muted">لمقاس مخصص، أضيفي ملاحظة أو أرفقِي مقاساتكِ عند إتمام الطلب.</p>`;
+    <p class="tiny muted">مقاسك مش في الجدول؟ اختاري <b>«${util.esc(CFG.CUSTOM_SIZE_LABEL || 'مقاس خاص')}»</b> واكتبي رقم مقاسك (${CFG.CUSTOM_SIZE_MIN || 30}–${CFG.CUSTOM_SIZE_MAX || 70})، وممكن كمان تضيفي مقاساتكِ بالسنتيمتر عند إتمام الطلب.</p>`;
 
   function guidesModal() {
     if (document.getElementById('guideModal')) return;
@@ -1137,10 +1266,12 @@
         <button class="card-view" type="button" data-quick-view="${util.esc(p.id)}" aria-label="العرض السريع ${util.esc(p.title)}">عرض</button>
       </div>`;
 
+    const cardSold = stock.isSoldOut(p) || !stock.hasSize(p);
     return `
-    <article class="card reveal" data-delay="${(i % 4) * 0.06}" data-id="${util.esc(p.id)}">
+    <article class="card reveal${cardSold ? ' is-soldout' : ''}" data-delay="${(i % 4) * 0.06}" data-id="${util.esc(p.id)}"${cardSold ? ' data-sold="1"' : ''}>
       <a href="product.html?id=${encodeURIComponent(p.id)}" class="card-media" aria-label="${util.esc(p.title)}">
-        <img class="card-image-primary" src="${util.img(p.image_url, true)}" alt="${util.esc(p.title)}" width="480" height="600" loading="lazy" decoding="async">
+        <img class="card-image-primary" src="${util.img(p.image_url, true)}" alt="${util.esc(p.title)}" width="480" height="600"
+             loading="${i < 2 ? 'eager' : 'lazy'}" fetchpriority="${i === 0 ? 'high' : 'auto'}" decoding="async">
         ${alternate ? `<img class="card-image-alt" src="${util.img(alternate, true)}" alt="" width="480" height="600" loading="lazy" decoding="async" aria-hidden="true">` : ''}
         <span class="card-badges">${soldBadge}${labelBadge}${saleBadge}</span>
         ${timedBadge ? `<span class="card-timed-badge">${timedBadge}</span>` : ''}
@@ -1165,6 +1296,7 @@
     }
     const firstSize = stock.firstSize(p);
     const firstColor = stock.firstColor(p);
+    const hasCustomSize = (p.sizes || []).some(x => util.isCustomSize(x));
     /* ⭐ المقاسات النافدة تفضل ظاهرة لكن مقفولة ومكتوب عليها SOLD OUT */
     const sizes = (p.sizes || []).map(size => {
       const sold = stock.isSizeSold(p, size);
@@ -1186,6 +1318,12 @@
             <div class="card-meta"><span class="card-price">${util.money(p.price)}</span>${sale ? `<span class="card-price-old">${util.money(p.old_price)}</span><span class="badge badge--sale">تخفيض -${offer.pct(p)}٪</span>` : ''}</div>
             <p class="tiny muted">${util.esc((p.description || '').slice(0, 150))}</p>
             ${sizes ? `<div class="opt"><span class="opt-label">اختاري المقاس</span><div class="opt-grid">${sizes}</div></div>` : ''}
+            ${hasCustomSize ? `<div class="size-custom" id="qCustomWrap" hidden>
+              <label class="opt-label" for="qCustomValue">${util.esc(CFG.CUSTOM_SIZE_LABEL || 'مقاس خاص')} — اكتبي رقم مقاسك</label>
+              <input class="input size-custom-input" id="qCustomValue" inputmode="numeric" autocomplete="off"
+                     placeholder="مثال: 42" aria-describedby="qCustomHint">
+              <span class="tiny muted" id="qCustomHint">من ${CFG.CUSTOM_SIZE_MIN || 30} لـ ${CFG.CUSTOM_SIZE_MAX || 70}</span>
+            </div>` : ''}
             ${colors ? `<div class="opt"><span class="opt-label">اللون</span><div class="opt-grid">${colors}</div></div>` : ''}
             <button class="btn btn--block" type="button" id="quickAdd">أضيفي للسلة</button>
             <a class="link-u" href="product.html?id=${encodeURIComponent(p.id)}">التفاصيل الكاملة <span class="en">→</span></a>
@@ -1194,19 +1332,35 @@
       </div>`;
     modal.open(id);
     ON(m.querySelector('[data-close]'), 'click', () => modal.close(m));
+    const qCustomWrap = m.querySelector('#qCustomWrap');
+    const qCustomValue = m.querySelector('#qCustomValue');
     m.querySelectorAll('[data-q-size]').forEach(b => ON(b, 'click', () => {
       m.querySelectorAll('[data-q-size]').forEach(x => x.classList.toggle('is-on', x === b));
+      const custom = util.isCustomSize(b.dataset.qSize);
+      if (qCustomWrap) {
+        qCustomWrap.hidden = !custom;
+        if (custom) setTimeout(() => qCustomValue && qCustomValue.focus(), 30);
+      }
     }));
     m.querySelectorAll('[data-q-color]').forEach(b => ON(b, 'click', () => {
       m.querySelectorAll('[data-q-color]').forEach(x => x.classList.toggle('is-on', x === b));
     }));
     ON(m.querySelector('#quickAdd'), 'click', () => {
-      const size = m.querySelector('[data-q-size].is-on')?.dataset.qSize || '';
+      const baseSize = m.querySelector('[data-q-size].is-on')?.dataset.qSize || '';
       const color = m.querySelector('[data-q-color].is-on')?.dataset.qColor || '';
       if (stock.isSoldOut(p) || !stock.hasSize(p)) return toast('المنتج ده نافد حاليًا.', 'warn');
-      if (sizes && !size) return toast('اختاري المقاس أولاً.', 'warn');
-      if (size && stock.isSizeSold(p, size)) return toast('المقاس ده نافد — اختاري مقاس تاني.', 'warn');
+      if (sizes && !baseSize) return toast('اختاري المقاس أولاً.', 'warn');
+      if (baseSize && stock.isSizeSold(p, baseSize)) return toast('المقاس ده نافد — اختاري مقاس تاني.', 'warn');
       if (color && stock.isColorSold(p, color)) return toast('اللون ده نافد — اختاري لون تاني.', 'warn');
+      let customValue = '';
+      if (util.isCustomSize(baseSize)) {
+        customValue = (qCustomValue?.value || '').trim();
+        if (!util.validCustomSize(customValue)) {
+          qCustomValue?.focus();
+          return toast(`اكتبي رقم مقاسك (${CFG.CUSTOM_SIZE_MIN || 30}–${CFG.CUSTOM_SIZE_MAX || 70}).`, 'warn');
+        }
+      }
+      const size = util.composeSize(baseSize, customValue);
       cart.add({ id: p.id, title: p.title, title_en: p.title_en, price: p.price, qty: 1, size, color, image: p.image_url });
       toast('تمت الإضافة إلى سلتك', 'ok');
       modal.close(m);
@@ -1217,12 +1371,12 @@
     if (document.getElementById('cartDrawer')) return;
     document.body.insertAdjacentHTML('beforeend', `
       <div class="cart-drawer-backdrop" data-cart-close></div>
-      <aside class="cart-drawer" id="cartDrawer" role="dialog" aria-modal="true" aria-label="السلة" aria-hidden="true" tabindex="-1">
+      <div class="cart-drawer" id="cartDrawer" role="dialog" aria-modal="true" aria-label="السلة" aria-hidden="true" tabindex="-1">
         <div class="cart-drawer-head"><div><span class="eyebrow">سلتك</span><h2>السلة <span class="drawer-count" id="drawerCount">0</span></h2></div><button class="modal-close" type="button" data-cart-close aria-label="إغلاق السلة">✕</button></div>
         <div class="cart-drawer-items" id="drawerItems"></div>
         <div class="cart-drawer-empty" id="drawerEmpty"><p>سلتك فارغة.</p><a class="btn btn--ghost btn--sm" href="shop.html">تسوّقي الآن</a></div>
         <div class="cart-drawer-foot" id="drawerFoot"><div class="drawer-total"><span>المجموع الفرعي</span><b id="drawerSubtotal"></b></div><div class="drawer-total drawer-total-final"><span>الإجمالي</span><b id="drawerTotal"></b></div><a class="btn btn--block" id="drawerCheckout" href="checkout.html">إتمام الطلب</a><a class="drawer-view-bag" href="cart.html">عرض السلة الكاملة</a></div>
-      </aside>`);
+      </div>`);
     const drawer = $('#cartDrawer');
     let returnFocus = null;
     // الحالة الابتدائية: السلة مقفولة دايمًا مع أول تحميل (حتى لو المتصفح رجّع الصفحة من الكاش)
@@ -1234,7 +1388,7 @@
       $('#drawerCount').textContent = items.reduce((sum, item) => sum + (item.qty || 1), 0);
       $('#drawerItems').innerHTML = items.map(item => {
         const key = `${item.id}__${item.size || ''}__${item.color || ''}`;
-        return `<article class="drawer-item" data-key="${util.esc(key)}"><img src="${util.img(item.image || item.image_url, true)}" alt=""><div class="drawer-item-info"><b>${util.esc(item.title)}</b><span>${[item.size && `مقاس ${util.esc(item.size)}`, item.color && util.esc(item.color)].filter(Boolean).join(' · ')}</span><strong>${util.money(item.price)}</strong></div><button type="button" class="drawer-remove" data-drawer-remove aria-label="حذف ${util.esc(item.title)}">×</button></article>`;
+        return `<article class="drawer-item" data-key="${util.esc(key)}"><img src="${util.img(item.image || item.image_url, true)}" alt=""><div class="drawer-item-info"><b>${util.esc(item.title)}</b><span>${[(item.size && (util.isCustomSize(item.size) ? util.esc(item.size) : `مقاس ${util.esc(item.size)}`)), item.color && util.esc(item.color)].filter(Boolean).join(' · ')}</span><strong>${util.money(item.price)}</strong></div><button type="button" class="drawer-remove" data-drawer-remove aria-label="حذف ${util.esc(item.title)}">×</button></article>`;
       }).join('');
       $('#drawerEmpty').classList.toggle('hide', items.length > 0);
       $('#drawerFoot').classList.toggle('hide', !items.length);
@@ -1370,6 +1524,19 @@
     });
     return adminToolsPromise;
   }
+
+  /* ==========================================================
+     ⭐ Service Worker — تسريع الزيارات المتكررة على الموبايل
+     بيخزّن CSS/JS/الصور (وأي صورة منتج من Supabase Storage) محليًا،
+     فالزيارة التانية بتفتح من غير ما تنزّل حاجة تقريبًا.
+     بيشتغل على https بس (GitHub Pages / Vercel) — file:// بيتجاهله.
+     ========================================================== */
+  function registerSW() {
+    if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
+    const v = encodeURIComponent(CFG.ASSET_VERSION || '1');
+    navigator.serviceWorker.register(`sw.js?v=${v}`, { scope: './' }).catch(() => { /* مش مشكلة — الموقع شغال */ });
+  }
+  ON(window, 'load', () => setTimeout(registerSW, 1400));
 
   document.documentElement.classList.add('js-reveal');
   admin.handleUrl();

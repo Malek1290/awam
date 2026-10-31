@@ -62,7 +62,7 @@ function renderSummary() {
       <img src="${util.img(i.image || i.image_url, true)}" alt="">
       <div>
         <b>${util.esc(i.title)} <span class="muted">×${i.qty || 1}</span></b>
-        <span>${[i.size ? 'مقاس ' + i.size : '', i.color || ''].filter(Boolean).join(' · ')}</span>
+        <span>${[i.size ? (util.isCustomSize(i.size) ? util.esc(i.size) : 'مقاس ' + util.esc(i.size)) : '', util.esc(i.color || '')].filter(Boolean).join(' · ')}</span>
       </div>
       <b style="font-size:13px">${util.money((i.price || 0) * (i.qty || 1))}</b>
     </div>`).join('');
@@ -216,7 +216,7 @@ async function placeOrder() {
   /* رسالة واتساب */
   const msg = buildOrderMessage({
     code, name, phone, city, address, notes,
-    items: items.map(i => ({ ...i, note: [i.size ? 'مقاس ' + i.size : '', i.color || ''].filter(Boolean).join(' · ') })),
+    items: items.map(i => ({ ...i, note: [i.size ? (util.isCustomSize(i.size) ? i.size : 'مقاس ' + i.size) : '', i.color || ''].filter(Boolean).join(' · ') })),
     total: cart.subtotal() - cart.discount() + getShippingFee(),
     subtotal: cart.subtotal(),
     discount: coupons.breakdown(items).discount,

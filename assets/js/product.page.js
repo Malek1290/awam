@@ -2,9 +2,9 @@
    عوام AWAM — PRODUCT PAGE
    جاليري موحّد + ثامبنيل + اختيار مقاس/لون + دليل قياسات + إضافة للسلة
    ============================================================ */
-const { $, $$, ON, util, products, cart, toast, modal, waLink, icons, offer, stock } = window.JL;
+const { CFG, $, $$, ON, util, products, cart, toast, modal, waLink, icons, offer, stock } = window.JL;
 
-const state = { product: null, imgIndex: 0, size: '', color: '', qty: 1 };
+const state = { product: null, imgIndex: 0, size: '', sizeValue: '', color: '', qty: 1 };
 
 /* ---------- كارت مشابه ---------- */
 function miniCard(p) {
@@ -39,9 +39,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   state.size = stock.firstSize(p);
   state.color = stock.firstColor(p);
 
-  document.title = `${p.title} · عوام`;
+  document.title = `${p.title} · ${util.siteName()}`;
   $('#crumbName').textContent = p.title;
-  $('#pdpCat').textContent = [p.title_en || '', p.category || ''].filter(Boolean).join(' · ') || 'عوام';
+  $('#pdpCat').textContent = [p.title_en || '', p.category || ''].filter(Boolean).join(' · ') || util.siteName();
   $('#pdpTitle').textContent = p.title;
 
   /* السعر + العرض المحدود */
@@ -71,7 +71,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#pdpPrice').after(offerHost);
 
   /* الوصف */
-  $('#pdpDesc').textContent = p.description || 'قطعة عوام بتفصيل متقن وخامة مريحة.';
+  $('#pdpDesc').textContent = p.description || `قطعة من ${util.siteName()} بتفصيل متقن وخامة مريحة.`;
+
+  /* ⭐ المنتج كله نافد (أو كل مقاساته نفدت) → بانر واضح + تعطيل الشراء */
+  const soldWhole = stock.isSoldOut(p) || !stock.hasSize(p);
+  if (soldWhole) {
+    const banner = document.createElement('div');
+    banner.className = 'pdp-soldout';
+    banner.setAttribute('role', 'status');
+    banner.innerHTML = `<b>SOLD OUT</b><span>${stock.isSoldOut(p) ? 'القطعة دي نافدة حاليًا.' : 'كل مقاسات القطعة نافدة حاليًا.'} ممكن تكلّمينا على واتساب نتأكد من توفّرها تاني أو نجهّزلك زيها.</span>`;
+    $('#pdpDesc').after(banner);
+    const addBtn = $('#addToCart');
+    const buyBtn = $('#buyNow');
+    if (addBtn) { addBtn.disabled = true; addBtn.classList.add('is-disabled'); addBtn.textContent = 'SOLD OUT'; }
+    if (buyBtn) { buyBtn.disabled = true; buyBtn.classList.add('is-disabled'); buyBtn.textContent = 'غير متاح حاليًا'; }
+  }
 
   /* الجاليري */
   const stage = $('#stage');
@@ -104,23 +118,62 @@ document.addEventListener('DOMContentLoaded', async () => {
     sx = null;
   });
 
-  /* المقاسات */
+  /* المقاسات — XS → 4XL + مقاس خاص برقم */
   const sizes = p.sizes || [];
+  const customWrap = $('#customSizeWrap');
+  const customValue = $('#customSizeValue');
+
   $('#sizeBtns').innerHTML = sizes.map(s => {
     const sold = stock.isSizeSold(p, s);
+    const custom = util.isCustomSize(s);
     return `<button type="button" class="opt-btn ${s === state.size && !sold ? 'is-on' : ''} ${sold ? 'is-soldout' : ''}"
       data-size="${util.esc(s)}" ${sold ? 'disabled aria-disabled="true"' : ''} aria-label="${util.esc(s)}${sold ? ' — SOLD OUT' : ''}">
-      <span class="opt-name">${util.esc(s)}</span>${sold ? '<span class="sold-tag">SOLD OUT</span>' : ''}
+      <span class="opt-name">${util.esc(custom ? (CFG.CUSTOM_SIZE_LABEL || s) : s)}</span>${sold ? '<span class="sold-tag">SOLD OUT</span>' : ''}
     </button>`;
   }).join('');
+
+  function syncSizeHint() {
+    if (!state.size) {
+      $('#sizeHint').textContent = sizes.length ? (stock.hasSize(p) ? 'اختاري المقاس' : 'كل المقاسات نافدة') : 'اختاري المقاس';
+      $('#sizeHint').classList.add('muted');
+      return;
+    }
+    const shown = util.composeSize(state.size, state.sizeValue);
+    $('#sizeHint').textContent = shown;
+    $('#sizeHint').classList.remove('muted');
+  }
+
+  function syncCustomBox() {
+    if (!customWrap) return;
+    const isCustom = util.isCustomSize(state.size);
+    customWrap.hidden = !isCustom;
+    if (isCustom) {
+      customWrap.classList.add('is-on');
+      setTimeout(() => customValue && customValue.focus(), 40);
+    } else {
+      customWrap.classList.remove('is-on');
+    }
+    syncSizeHint();
+  }
+
   $$('#sizeBtns .opt-btn').forEach(b => ON(b, 'click', () => {
     if (b.disabled || b.classList.contains('is-soldout')) return toast('المقاس ده نافد.', 'warn');
     state.size = b.dataset.size;
+    if (!util.isCustomSize(state.size)) state.sizeValue = '';
     $$('#sizeBtns .opt-btn').forEach(x => x.classList.toggle('is-on', x === b));
-    $('#sizeHint').textContent = state.size;
-    $('#sizeHint').classList.remove('muted');
+    syncCustomBox();
   }));
-  $('#sizeHint').textContent = state.size || (sizes.length ? 'كل المقاسات نافدة' : 'اختاري المقاس');
+
+  if (customValue) {
+    ON(customValue, 'input', () => {
+      customValue.value = customValue.value.replace(/[^0-9.]/g, '').slice(0, 4);
+      state.sizeValue = customValue.value;
+      customValue.classList.toggle('is-invalid', !!state.sizeValue && !util.validCustomSize(state.sizeValue));
+      syncSizeHint();
+    });
+  }
+  syncCustomBox();
+  syncSizeHint();
 
   /* الألوان */
   const colors = p.colors || [];
@@ -156,6 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       ${p.category ? `<li>القسم: ${util.esc(p.category)}</li>` : ''}
       ${p.title_en ? `<li>الاسم: ${util.esc(p.title_en)}</li>` : ''}
       <li>القصّة: مريحة ومبطنة بالكامل.</li>
+      <li>المقاسات: XS · S · M · L · XL · 2XL · 3XL · 4XL، وكمان مقاس خاص برقم حسب طلبك.</li>
       <li>التغليف: صندوق قماش مع ورق تالك — جاهز للإهداء.</li>
       <li>العربون: ٥٠٪ عبر فودافون كاش، والباقي عند الاستلام.</li>
     </ul>`;
@@ -186,7 +240,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     title_en: p.title_en,
     price: p.price,
     qty: state.qty,
-    size: state.size,
+    size: util.composeSize(state.size, state.sizeValue),
     color: state.color,
     image: p.image_url
   });
@@ -195,6 +249,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (stock.isSoldOut(p) || !stock.hasSize(p)) { toast('المنتج ده نافد حاليًا.', 'warn'); return true; }
     if (state.size && stock.isSizeSold(p, state.size)) { toast('المقاس ده نافد — اختاري مقاس تاني.', 'warn'); return true; }
     if (state.color && stock.isColorSold(p, state.color)) { toast('اللون ده نافد — اختاري لون تاني.', 'warn'); return true; }
+    if (util.isCustomSize(state.size) && !util.validCustomSize(state.sizeValue)) {
+      toast(`اكتبي رقم مقاسك (${CFG.CUSTOM_SIZE_MIN || 30}–${CFG.CUSTOM_SIZE_MAX || 70}).`, 'warn');
+      customValue && customValue.focus();
+      return true;
+    }
     return false;
   };
 
@@ -214,7 +273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   /* استفسار على واتساب */
-  const ask = `مرحباً بـ عوام ✦\nعندي استفسار عن: ${p.title}${p.title_en ? ' / ' + p.title_en : ''}\n${location.href}`;
+  const ask = `مرحباً بـ ${util.siteName()} ✦\nعندي استفسار عن: ${p.title}${p.title_en ? ' / ' + p.title_en : ''}\n${location.href}`;
   $('#waAsk').href = waLink(ask);
 
   /* المشابهة */
