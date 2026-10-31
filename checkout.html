@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style id="jl-critical">
+/* ⭐ ستايل حرج — بيشتغل قبل main.css عشان الصفحة ما تظهرش من غير ستايل */
+html{background:#FDFBF7}
+/* ⭐ منع كروم على الموبايل إنه يوسّع نافذة التخطيط 4 مرات قبل ما main.css ينزل — ده اللي كان بيقص اللوجو */
+body{max-width:100%;overflow-x:hidden;background:#FDFBF7;margin:0}
+img{max-width:100%}
+#jl-loader{position:fixed;inset:0;z-index:9999;background:#FDFBF7;display:grid;place-items:center;margin:0}
+html.jl-loaded #jl-loader{display:none!important}
+#jl-loader .jl-loader-inner{display:grid;justify-items:center;gap:26px;width:min(86vw,420px)}
+#jl-loader .jl-loader-logo-wrap{position:relative;display:grid;place-items:center;width:150px;height:150px}
+#jl-loader .jl-loader-aura{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(197,140,115,.20),transparent 62%)}
+#jl-loader .jl-loader-logo{width:120px;height:auto;aspect-ratio:679/299;object-fit:contain;display:block}
+#jl-loader .jl-loader-bar{width:100%;height:2px;background:#EFE7DC;border-radius:2px;overflow:hidden}
+#jl-loader .jl-loader-bar i{display:block;height:100%;width:0;background:#8C4A42;border-radius:2px;transition:width .2s linear}
+#jl-loader .jl-loader-pct{font-family:system-ui,sans-serif;font-size:13px;letter-spacing:.2em;color:#8C4A42;direction:ltr}
+</style>
+<script data-cfasync="false">
+/* ⭐ مشغّل اللودر المستقل — بيشتغل قبل تحميل main.css/core.js
+   عشان الأرقام تتحرك حتى لو النت بطيء، من غير ما يقف على 00% */
+(function () {
+  var p = 0, iv = null, el = null, pct = null, bar = null;
+  function tick() {
+    p = Math.min(92, p + Math.max(1.5, (92 - p) * 0.18));
+    if (pct) pct.textContent = (p < 10 ? '0' : '') + Math.round(p) + '%';
+    if (bar) bar.style.width = p + '%';
+  }
+  var tries = 0;
+  function start() {
+    el = document.getElementById('jl-loader');
+    if (!el) { if (++tries < 10) setTimeout(start, 60); return; }
+    pct = el.querySelector('.jl-loader-pct');
+    bar = el.querySelector('.jl-loader-bar i');
+    if (!iv) iv = setInterval(tick, 90);
+  }
+  window.__JL_LOADER_INLINE_STOP = function () { if (iv) { clearInterval(iv); iv = null; } };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
+<title>إتمام الطلب · عوام</title>
+<link rel="icon" href="assets/img/brand/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/img/brand/favicon.png">
+<link rel="preload" as="image" href="assets/img/brand/awam-wordmark-brown.png">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="assets/css/main.css?v=20261102v7">
+  <!-- شبكة أمان: لو أي ملف JS خارجي فشل تحميله، اللودر ما يعلّقش -->
+  <script data-cfasync="false" type="text/javascript">
+    (function () {
+      function dismiss() {
+        var l = document.getElementById('jl-loader');
+        if (!l) return;
+        l.style.transition = 'opacity .4s ease';
+        l.style.opacity = '0';
+        setTimeout(function () {
+          if (l.parentNode) l.parentNode.removeChild(l);
+          document.documentElement.classList.add('is-ready', 'jl-loaded');
+        }, 450);
+      }
+      setTimeout(dismiss, 7000);
+      window.addEventListener('error', function (e) {
+        if (e && e.target && e.target.tagName === 'SCRIPT') dismiss();
+      }, true);
+    })();
+  </script>
+  <noscript><style>#jl-loader{display:none!important}html{overflow:auto!important}</style></noscript>
+  <style>
+    .ship-options { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
+    .ship-option {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 18px; border: 2px solid #E5E5E5; border-radius: 16px;
+      cursor: pointer; transition: all .2s; background: #fff; margin: 0;
+    }
+    .ship-option:hover { border-color: var(--accent); }
+    .ship-option.is-on { border-color: var(--accent); background: var(--accent-soft); }
+    .ship-option input { accent-color: var(--accent); width: 18px; height: 18px; }
+    .ship-option .ship-icon { font-size: 24px; }
+    .ship-option .ship-txt { display: flex; flex-direction: column; gap: 2px; }
+    .ship-option .ship-txt b { font-weight: 600; font-size: 15px; }
+    .ship-option .ship-txt span { font-size: 12px; color: #999; }
+    .bank-info {
+      background: var(--accent-soft); border: 1px solid var(--accent);
+      border-radius: 14px; padding: 16px; margin-bottom: 16px;
+    }
+    .bank-info h4 { font-size: 15px; color: var(--accent); margin: 0 0 10px; display: flex; align-items: center; gap: 6px; }
+    .bank-info .bank-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; color: #555; }
+    .bank-info .bank-row strong { color: #222; font-weight: 600; }
+    @media (max-width: 700px) {
+      .checkout-grid { grid-template-columns: 1fr !important; }
+      .ship-option { padding: 12px 14px; }
+    }
+  </style>
+</head>
+<body data-page="checkout">
+
+<div id="site-header"></div>
+
+<main>
+  <section class="page-head">
+    <div class="container">
+      <nav class="crumbs"><a href="index.html">الرئيسية</a><span class="sep">/</span><a href="cart.html">السلة</a><span class="sep">/</span><span>إتمام الطلب</span></nav>
+      <div class="section-head" style="margin-bottom:0">
+        <div class="stack">
+          <span class="eyebrow">إتمام الطلب</span>
+          <h1 class="title-lg">أكملي طلبك</h1>
+        </div>
+        <p class="muted tiny">خطوات قليلة — الدفع عبر فودافون كاش أو إنستاباي</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="checkout-grid" id="checkoutGrid">
+
+        <!-- 1) Customer details -->
+        <div style="display:grid;gap:18px">
+          <div class="panel">
+            <div class="panel-title"><span class="n">1</span> بيانات العميل</div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="cName">الاسم الكامل <span class="req">*</span></label>
+                <input class="input" id="cName" autocomplete="name" placeholder="اسمك">
+              </div>
+              <div class="field">
+                <label for="cPhone">الجوال / واتساب <span class="req">*</span></label>
+                <input class="input" id="cPhone" inputmode="tel" autocomplete="tel" placeholder="011xxxxxxxx" dir="ltr">
+              </div>
+              <div class="field">
+                <label for="cCity">المدينة</label>
+                <input class="input" id="cCity" autocomplete="address-level2" placeholder="البحيرة">
+              </div>
+              <div class="field">
+                <label for="cAddress">العنوان الكامل</label>
+                <input class="input" id="cAddress" autocomplete="street-address" placeholder="المنطقة / الشارع / العمارة / معلم">
+              </div>
+            </div>
+            <div class="field">
+              <label for="cNotes">ملاحظات الطلب</label>
+              <textarea class="textarea" id="cNotes" placeholder="مقاس مخصص، تقصير، أو تغليف هدية؟ أضيفي ملاحظة هنا."></textarea>
+            </div>
+          </div>
+
+          <!-- 2) Shipping -->
+          <div class="panel" id="shipPanel">
+            <div class="panel-title"><span class="n">2</span> معلومات الشحن</div>
+            <div class="ship-options" id="shipOptions">
+              <label class="ship-option" data-ship="normal">
+                <input type="radio" name="ship" value="normal" checked>
+                <span class="radio"></span>
+                <span class="ship-txt"><b data-ship-label="normal">الشحن العادي</b><span data-ship-price="normal">— ج.م — جميع المحافظات</span></span>
+              </label>
+              <label class="ship-option" data-ship="remote">
+                <input type="radio" name="ship" value="remote">
+                <span class="radio"></span>
+                <span class="ship-txt"><b data-ship-label="remote">الشحن للمناطق النائية</b><span data-ship-price="remote">— ج.م — مطروح وسيناء فقط</span></span>
+              </label>
+            </div>
+            <p class="tiny muted" id="shipNote" style="margin:0"></p>
+          </div>
+
+          <!-- Your measurements (optional) -->
+          <div class="panel" id="measurePanel">
+            <div class="panel-title"><span class="n">3</span> مقاساتكِ (اختياري)</div>
+            <p class="tiny muted">لمقاس مخصص، اكتبي مقاساتكِ بالسنتيمتر. هنتبعّضها مع طلبك على واتساب.</p>
+
+            <div class="form-grid">
+              <div class="field"><label>الطول (سم)</label><input class="input" id="mHeight" inputmode="numeric" placeholder="165"></div>
+              <div class="field"><label>الصدر (سم)</label><input class="input" id="mBust" inputmode="numeric" placeholder="88"></div>
+              <div class="field"><label>الوسط (سم)</label><input class="input" id="mWaist" inputmode="numeric" placeholder="70"></div>
+              <div class="field"><label>الأرداف (سم)</label><input class="input" id="mHips" inputmode="numeric" placeholder="98"></div>
+              <div class="field"><label>الكتف (سم)</label><input class="input" id="mShoulder" inputmode="numeric" placeholder="38"></div>
+              <div class="field"><label>طول الكم (سم)</label><input class="input" id="mSleeve" inputmode="numeric" placeholder="58"></div>
+            </div>
+
+            <div class="field">
+              <label>ملاحظات المقاس</label>
+              <textarea class="textarea" id="mNotes" style="min-height:70px" placeholder="مثال: الطول المطلوب ١٤٥ سم، واسع من الناحية الأمامية، تفصيل مخصص…"></textarea>
+            </div>
+
+            <p class="tiny muted" style="margin:0">لو مش محتاجة تفصيل مخصص، سيبي القسم ده فاضي.</p>
+          </div>
+
+          <!-- 4) Payment -->
+          <div class="panel">
+            <div class="panel-title"><span class="n">4</span> طريقة الدفع</div>
+            <p class="tiny muted" style="margin:0">فودافون كاش أو إنستاباي — تدفعي <b>مصاريف الشحن فقط</b> مقدمًا، والباقي عند الاستلام.</p>
+            <div class="pay-grid" id="payGrid"></div>
+          </div>
+        </div>
+
+        <!-- Order summary -->
+        <aside class="summary">
+          <h3>طلبكِ</h3>
+          <div class="mini-list" id="miniList"></div>
+          <hr class="rule">
+          <div class="sum-row"><span>المجموع الفرعي</span><b id="cSub">—</b></div>
+          <div class="sum-row"><span>التوصيل</span><b id="cShip">—</b></div>
+
+          <div class="sum-row sum-discount hide" id="cDiscountRow">
+            <span>خصم الكوبون <b class="en" id="cCouponCode"></b></span><b id="cDiscount">—</b>
+          </div>
+
+          <!-- Coupon / Discount -->
+          <div class="coupon-block" id="cCouponBlock"></div>
+
+          <div class="sum-row sum-total"><span>الإجمالي</span><b id="cTotal">—</b></div>
+
+          <div class="field mt-2">
+            <label class="confirm-box" for="cConfirm" id="confirmBox">
+              <input type="checkbox" id="cConfirm">
+              <span class="confirm-check" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                     stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>
+              </span>
+              <span class="confirm-txt">
+                <b>أنا أؤكد أن البيانات صحيحة</b>
+                <span>وأوافق على تقديم الطلب والتواصل معي على واتساب</span>
+              </span>
+            </label>
+          </div>
+
+          <button class="btn btn--block" id="placeOrder">
+            <span class="en" style="letter-spacing:.18em">إتمام الطلب</span>
+          </button>
+          <p class="hint"><span class="dot"></span> تفاصيل طلبك (المنتجات، المقاس، اللون، المقاسات، وطريقة الدفع) هتترسل لنا على واتساب.</p>
+          <p class="err" id="ckErr"></p>
+        </aside>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="site-footer"></div>
+
+<!-- Order success modal -->
+<div class="modal" id="doneModal">
+  <div class="modal-card center" style="justify-items:center;text-align:center">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--bg-swirl);display:grid;place-items:center;margin-bottom:6px">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#8C4A42" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>
+    </div>
+    <h3 style="font-family:var(--font-display);font-size:20px;font-weight:400">تم تقديم طلبك ✦</h3>
+    <p class="tiny muted" style="line-height:2">رقم الطلب: <b class="en" id="orderCodeOut" style="color:var(--text-main)">—</b><br>
+      لو واتساب ما اتفتحش تلقائياً، استخدمي الزرّ تحته عشان ترجعي ترسلي تفاصيل الطلب.</p>
+    <a class="btn btn--block" id="waAgain" target="_blank" rel="noopener">فتح واتساب وإرسال الطلب</a>
+    <a class="link-u" href="shop.html" style="justify-self:center">العودة للمتجر</a>
+  </div>
+</div>
+
+<script data-cfasync="false" defer src="assets/js/config.js?v=20261102v7" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/env.js?v=20261102v7" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/core.js?v=20261102v7" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/checkout.page.js?v=20261102v7" type="text/javascript"></script><!-- أمان: لو أي ملف JS فشل في التحميل، الـ loader مايقفلش الموقع للأبد -->
+<script data-cfasync="false">
+setTimeout(function () {
+  if (window.JL) return;
+  var l = document.getElementById('jl-loader');
+  if (l && l.parentNode) l.parentNode.removeChild(l);
+  document.documentElement.classList.add('is-ready', 'jl-loaded');
+  var rv = document.querySelectorAll('.reveal, .reveal-lines');
+  for (var i = 0; i < rv.length; i++) rv[i].classList.add('is-visible');
+}, 6000);
+</script>
+<script data-cfasync="false">
+/* ⭐ إغلاق اضطراري: السكربت ده بيتنفّذ بعد تحميل main.css بالكامل
+   (المتصفح بيوقف تنفيذ السكربت لحد ما الستايل يجهز).
+   لو core.js اتأخر على شبكة بطيئة، البوابة بتفتح من غير ما اللودر يعلّق. */
+(function () {
+  function bail() {
+    if (document.getElementById('jl-loader') === null) return;
+    if (window.JL && window.JL.loader) return;          /* core.js جه — سيبه هو يقفل */
+    document.documentElement.classList.add('is-ready', 'jl-loaded');
+    var l = document.getElementById('jl-loader');
+    if (l && l.parentNode) l.parentNode.removeChild(l);
+    var rv = document.querySelectorAll('.reveal, .reveal-lines');
+    for (var i = 0; i < rv.length; i++) rv[i].classList.add('is-visible');
+  }
+  setTimeout(bail, 1400);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style id="jl-critical">
+/* ⭐ ستايل حرج — بيشتغل قبل main.css عشان الصفحة ما تظهرش من غير ستايل */
+html{background:#FDFBF7}
+/* ⭐ منع كروم على الموبايل إنه يوسّع نافذة التخطيط 4 مرات قبل ما main.css ينزل — ده اللي كان بيقص اللوجو */
+body{max-width:100%;overflow-x:hidden;background:#FDFBF7;margin:0}
+img{max-width:100%}
+#jl-loader{position:fixed;inset:0;z-index:9999;background:#FDFBF7;display:grid;place-items:center;margin:0}
+html.jl-loaded #jl-loader{display:none!important}
+#jl-loader .jl-loader-inner{display:grid;justify-items:center;gap:26px;width:min(86vw,420px)}
+#jl-loader .jl-loader-logo-wrap{position:relative;display:grid;place-items:center;width:150px;height:150px}
+#jl-loader .jl-loader-aura{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(197,140,115,.20),transparent 62%)}
+#jl-loader .jl-loader-logo{width:120px;height:auto;aspect-ratio:679/299;object-fit:contain;display:block}
+#jl-loader .jl-loader-bar{width:100%;height:2px;background:#EFE7DC;border-radius:2px;overflow:hidden}
+#jl-loader .jl-loader-bar i{display:block;height:100%;width:0;background:#8C4A42;border-radius:2px;transition:width .2s linear}
+#jl-loader .jl-loader-pct{font-family:system-ui,sans-serif;font-size:13px;letter-spacing:.2em;color:#8C4A42;direction:ltr}
+</style>
+<script data-cfasync="false">
+/* ⭐ مشغّل اللودر المستقل — بيشتغل قبل تحميل main.css/core.js
+   عشان الأرقام تتحرك حتى لو النت بطيء، من غير ما يقف على 00% */
+(function () {
+  var p = 0, iv = null, el = null, pct = null, bar = null;
+  function tick() {
+    p = Math.min(92, p + Math.max(1.5, (92 - p) * 0.18));
+    if (pct) pct.textContent = (p < 10 ? '0' : '') + Math.round(p) + '%';
+    if (bar) bar.style.width = p + '%';
+  }
+  var tries = 0;
+  function start() {
+    el = document.getElementById('jl-loader');
+    if (!el) { if (++tries < 10) setTimeout(start, 60); return; }
+    pct = el.querySelector('.jl-loader-pct');
+    bar = el.querySelector('.jl-loader-bar i');
+    if (!iv) iv = setInterval(tick, 90);
+  }
+  window.__JL_LOADER_INLINE_STOP = function () { if (iv) { clearInterval(iv); iv = null; } };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
+<title>المنتج · عوام</title>
+<link rel="icon" href="assets/img/brand/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/img/brand/favicon.png">
+<link rel="preload" as="image" href="assets/img/brand/awam-wordmark-brown.png">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="assets/css/main.css?v=20261102v7">
+</head>
+<body data-page="product">
+
+<div id="site-header"></div>
+
+<main>
+  <section>
+    <div class="container">
+      <nav class="crumbs" aria-label="مسار" style="padding-top:18px">
+        <a href="index.html">الرئيسية</a><span class="sep">/</span>
+        <a href="shop.html">المتجر</a><span class="sep">/</span>
+        <span id="crumbName">—</span>
+      </nav>
+
+      <div class="pdp" id="pdp">
+        <!-- Gallery -->
+        <div class="gallery">
+          <div class="gallery-stage" id="stage">
+            <div class="skeleton" style="position:absolute;inset:0"></div>
+            <div class="gallery-nav">
+              <button id="prevImg" aria-label="الصورة السابقة"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg></button>
+              <button id="nextImg" aria-label="الصورة التالية"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M10 6l6 6-6 6"/></svg></button>
+            </div>
+          </div>
+          <div class="thumbs" id="thumbs"></div>
+        </div>
+
+        <!-- Product information -->
+        <div class="pdp-info">
+          <div class="pdp-top">
+            <span class="eyebrow" id="pdpCat">عوام</span>
+            <h1 class="pdp-title" id="pdpTitle">—</h1>
+            <div class="pdp-price" id="pdpPrice"></div>
+            <p class="pdp-desc" id="pdpDesc"></p>
+          </div>
+
+          <!-- Sizes -->
+          <div class="opt" id="optSizes">
+            <div class="opt-head">
+              <span class="opt-label">المقاس <b id="sizeHint" class="muted tiny">اختاري المقاس</b></span>
+              <button class="guide-btn" id="openGuide">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 8h18v8H3z"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/></svg>
+                دليل المقاسات
+              </button>
+            </div>
+            <div class="opt-grid" id="sizeBtns"></div>
+          </div>
+
+          <!-- Colors -->
+          <div class="opt" id="optColors">
+            <div class="opt-head"><span class="opt-label">اللون <b id="colorHint" class="muted tiny"></b></span></div>
+            <div class="opt-grid" id="colorBtns"></div>
+          </div>
+
+          <!-- Quantity and purchase -->
+          <div class="opt">
+            <span class="opt-label">الكمية</span>
+            <div class="qty" id="qtyBox">
+              <button id="qtyMinus" aria-label="تقليل الكمية">−</button>
+              <span class="val" id="qtyVal">1</span>
+              <button id="qtyPlus" aria-label="زيادة الكمية">+</button>
+            </div>
+          </div>
+
+          <div class="buy-row">
+            <button class="btn" id="addToCart">أضيفي للسلة</button>
+            <button class="btn btn--ghost" id="buyNow">أشري الآن</button>
+            <a class="btn btn--icon btn--ghost" id="waAsk" target="_blank" rel="noopener" aria-label="استفساري على واتساب" href="#">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.7-4.7A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.6 9.4c.4 2.2 2 3.8 4.2 4.2l1-1.2 1.8.7c-.3 1.2-1.4 1.9-2.6 1.8-2.9-.3-5.2-2.6-5.5-5.5-.1-1.2.6-2.3 1.8-2.6l.7 1.8-1.4.8Z"/></svg>
+            </a>
+          </div>
+          <p class="hint"><span class="dot"></span> توصيل مجّاني داخل البحيرة · فودافون كاش · تأكيد الطلب على واتساب</p>
+
+          <!-- Accordion details -->
+          <div class="acc">
+            <div class="acc-item">
+              <button class="acc-head">تفاصيل المنتج <span class="ic">+</span></button>
+              <div class="acc-body"><div class="acc-body-in" id="accDetails"></div></div>
+            </div>
+            <div class="acc-item">
+              <button class="acc-head">التوصيل والاسترجاع <span class="ic">+</span></button>
+              <div class="acc-body"><div class="acc-body-in">
+                <ul>
+                  <li>توصيل داخل محافظة البحيرة في ٢–٥ أيام عمل.</li>
+                  <li>توصيل مجّاني على كل الطلبات داخل البحيرة.</li>
+                  <li>استرجاع أو استبدال خلال ١٤ يوماً بشرط ألا تكون القطعة مستخدمة.</li>
+                  <li>القطع بالمقاس المخصص تُفصل حسب الطلب ولا تُستبدل إلا في حال وجود عيب.</li>
+                  <li>تُدفع دفعة مقدمة ٥٠٪ عبر فودافون كاش، والباقي عند الاستلام.</li>
+                </ul>
+              </div></div>
+            </div>
+            <div class="acc-item">
+              <button class="acc-head">العناية بالقطعة <span class="ic">+</span></button>
+              <div class="acc-body"><div class="acc-body-in">
+                <ul>
+                  <li>غسيل يدوي بالماء البارد أو تنظيف جاف.</li>
+                  <li>تجفيف في الظل بعيداً عن أشعة الشمس المباشرة.</li>
+                  <li>كيّ من الداخل بدرجة حرارة منخفضة.</li>
+                </ul>
+              </div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- You may also like -->
+  <section class="section section--soft">
+    <div class="container">
+      <div class="section-head">
+        <div class="stack"><span class="eyebrow">قد يعجبكِ أيضاً</span><h2 class="title-lg">قطع مشابهة</h2></div>
+        <a class="link-u" href="shop.html">تسوّقي الكل <span class="en">→</span></a>
+      </div>
+      <div class="grid-products" id="relatedGrid"></div>
+    </div>
+  </section>
+</main>
+
+<div id="site-footer"></div>
+
+<!-- Size guide modal (product image or default chart) -->
+<div class="modal" id="sizeModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>دليل المقاسات</h3>
+      <button class="modal-close" data-close-guide aria-label="إغلاق">✕</button>
+    </div>
+    <div id="sizeModalBody"></div>
+  </div>
+</div>
+
+<script data-cfasync="false" defer src="assets/js/config.js?v=20261102v7" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/env.js?v=20261102v7" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/core.js?v=20261102v7" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/product.page.js?v=20261102v7" type="text/javascript"></script><!-- أمان: لو أي ملف JS فشل في التحميل، الـ loader مايقفلش الموقع للأبد -->
+<script data-cfasync="false">
+setTimeout(function () {
+  if (window.JL) return;
+  var l = document.getElementById('jl-loader');
+  if (l && l.parentNode) l.parentNode.removeChild(l);
+  document.documentElement.classList.add('is-ready', 'jl-loaded');
+  var rv = document.querySelectorAll('.reveal, .reveal-lines');
+  for (var i = 0; i < rv.length; i++) rv[i].classList.add('is-visible');
+}, 6000);
+</script>
+<script data-cfasync="false">
+/* ⭐ إغلاق اضطراري: السكربت ده بيتنفّذ بعد تحميل main.css بالكامل
+   (المتصفح بيوقف تنفيذ السكربت لحد ما الستايل يجهز).
+   لو core.js اتأخر على شبكة بطيئة، البوابة بتفتح من غير ما اللودر يعلّق. */
+(function () {
+  function bail() {
+    if (document.getElementById('jl-loader') === null) return;
+    if (window.JL && window.JL.loader) return;          /* core.js جه — سيبه هو يقفل */
+    document.documentElement.classList.add('is-ready', 'jl-loaded');
+    var l = document.getElementById('jl-loader');
+    if (l && l.parentNode) l.parentNode.removeChild(l);
+    var rv = document.querySelectorAll('.reveal, .reveal-lines');
+    for (var i = 0; i < rv.length; i++) rv[i].classList.add('is-visible');
+  }
+  setTimeout(bail, 1400);
+})();
+</script>
+</body>
+</html>

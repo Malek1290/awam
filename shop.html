@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style id="jl-critical">
+/* ⭐ ستايل حرج — بيشتغل قبل main.css عشان الصفحة ما تظهرش من غير ستايل */
+html{background:#FDFBF7}
+/* ⭐ منع كروم على الموبايل إنه يوسّع نافذة التخطيط 4 مرات قبل ما main.css ينزل — ده اللي كان بيقص اللوجو */
+body{max-width:100%;overflow-x:hidden;background:#FDFBF7;margin:0}
+img{max-width:100%}
+#jl-loader{position:fixed;inset:0;z-index:9999;background:#FDFBF7;display:grid;place-items:center;margin:0}
+html.jl-loaded #jl-loader{display:none!important}
+#jl-loader .jl-loader-inner{display:grid;justify-items:center;gap:26px;width:min(86vw,420px)}
+#jl-loader .jl-loader-logo-wrap{position:relative;display:grid;place-items:center;width:150px;height:150px}
+#jl-loader .jl-loader-aura{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(197,140,115,.20),transparent 62%)}
+#jl-loader .jl-loader-logo{width:120px;height:auto;aspect-ratio:679/299;object-fit:contain;display:block}
+#jl-loader .jl-loader-bar{width:100%;height:2px;background:#EFE7DC;border-radius:2px;overflow:hidden}
+#jl-loader .jl-loader-bar i{display:block;height:100%;width:0;background:#8C4A42;border-radius:2px;transition:width .2s linear}
+#jl-loader .jl-loader-pct{font-family:system-ui,sans-serif;font-size:13px;letter-spacing:.2em;color:#8C4A42;direction:ltr}
+</style>
+<script data-cfasync="false">
+/* ⭐ مشغّل اللودر المستقل — بيشتغل قبل تحميل main.css/core.js
+   عشان الأرقام تتحرك حتى لو النت بطيء، من غير ما يقف على 00% */
+(function () {
+  var p = 0, iv = null, el = null, pct = null, bar = null;
+  function tick() {
+    p = Math.min(92, p + Math.max(1.5, (92 - p) * 0.18));
+    if (pct) pct.textContent = (p < 10 ? '0' : '') + Math.round(p) + '%';
+    if (bar) bar.style.width = p + '%';
+  }
+  var tries = 0;
+  function start() {
+    el = document.getElementById('jl-loader');
+    if (!el) { if (++tries < 10) setTimeout(start, 60); return; }
+    pct = el.querySelector('.jl-loader-pct');
+    bar = el.querySelector('.jl-loader-bar i');
+    if (!iv) iv = setInterval(tick, 90);
+  }
+  window.__JL_LOADER_INLINE_STOP = function () { if (iv) { clearInterval(iv); iv = null; } };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
+<title>المتجر · عوام</title>
+<meta name="description" content="تسوّقي عبايات ودلنجات وقطع استقبال عوام — تشكيلات جديدة، مقاسات مريحة، وتوصيل مجّاني داخل البحيرة.">
+<link rel="icon" href="assets/img/brand/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/img/brand/favicon.png">
+<link rel="preload" as="image" href="assets/img/brand/awam-wordmark-brown.png">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="assets/css/main.css?v=20261102v7">
+</head>
+<body data-page="shop">
+
+<div id="site-header"></div>
+
+<main>
+  <section class="page-head">
+    <div class="container">
+      <nav class="crumbs" aria-label="مسار">
+        <a href="index.html">الرئيسية</a><span class="sep">/</span><span>المتجر</span>
+      </nav>
+      <div class="section-head" style="margin-bottom:0">
+        <div class="stack">
+          <span class="eyebrow">المتجر</span>
+          <h1 class="title-lg">تسوّقي كل القطع</h1>
+        </div>
+        <p class="muted tiny" id="resCount">—</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="container">
+      <div class="filters">
+        <div id="catChips" role="group" aria-label="تصفية المنتجات حسب القسم" style="display:flex;gap:9px;flex-wrap:wrap"></div>
+        <span class="spacer"></span>
+        <select class="select" id="sortSel" aria-label="ترتيب المنتجات">
+          <option value="featured">الترتيب: مميز</option>
+          <option value="new">الأحدث</option>
+          <option value="price-asc">السعر: من الأقل للأعلى</option>
+          <option value="price-desc">السعر: من الأعلى للأقل</option>
+        </select>
+      </div>
+
+      <div class="grid-products" id="shopGrid">
+        <div class="skeleton" style="aspect-ratio:4/5"></div>
+        <div class="skeleton" style="aspect-ratio:4/5"></div>
+        <div class="skeleton" style="aspect-ratio:4/5"></div>
+        <div class="skeleton" style="aspect-ratio:4/5"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="site-footer"></div>
+
+<script data-cfasync="false" defer src="assets/js/config.js?v=20261102v7" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/env.js?v=20261102v7" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/core.js?v=20261102v7" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/shop.page.js?v=20261102v7" type="text/javascript"></script><!-- أمان: لو أي ملف JS فشل في التحميل، الـ loader مايقفلش الموقع للأبد -->
+<script data-cfasync="false">
+setTimeout(function () {
+  if (window.JL) return;
+  var l = document.getElementById('jl-loader');
+  if (l && l.parentNode) l.parentNode.removeChild(l);
+  document.documentElement.classList.add('is-ready', 'jl-loaded');
+  var rv = document.querySelectorAll('.reveal, .reveal-lines');
+  for (var i = 0; i < rv.length; i++) rv[i].classList.add('is-visible');
+}, 6000);
+</script>
+<script data-cfasync="false">
+/* ⭐ إغلاق اضطراري: السكربت ده بيتنفّذ بعد تحميل main.css بالكامل
+   (المتصفح بيوقف تنفيذ السكربت لحد ما الستايل يجهز).
+   لو core.js اتأخر على شبكة بطيئة، البوابة بتفتح من غير ما اللودر يعلّق. */
+(function () {
+  function bail() {
+    if (document.getElementById('jl-loader') === null) return;
+    if (window.JL && window.JL.loader) return;          /* core.js جه — سيبه هو يقفل */
+    document.documentElement.classList.add('is-ready', 'jl-loaded');
+    var l = document.getElementById('jl-loader');
+    if (l && l.parentNode) l.parentNode.removeChild(l);
+    var rv = document.querySelectorAll('.reveal, .reveal-lines');
+    for (var i = 0; i < rv.length; i++) rv[i].classList.add('is-visible');
+  }
+  setTimeout(bail, 1400);
+})();
+</script>
+</body>
+</html>

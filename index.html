@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style id="jl-critical">
+/* ⭐ ستايل حرج — بيشتغل قبل main.css عشان الصفحة ما تظهرش من غير ستايل */
+html{background:#FDFBF7}
+/* ⭐ منع كروم على الموبايل إنه يوسّع نافذة التخطيط 4 مرات قبل ما main.css ينزل — ده اللي كان بيقص اللوجو */
+body{max-width:100%;overflow-x:hidden;background:#FDFBF7;margin:0}
+img{max-width:100%}
+#jl-loader{position:fixed;inset:0;z-index:9999;background:#FDFBF7;display:grid;place-items:center;margin:0}
+html.jl-loaded #jl-loader{display:none!important}
+#jl-loader .jl-loader-inner{display:grid;justify-items:center;gap:26px;width:min(86vw,420px)}
+#jl-loader .jl-loader-logo-wrap{position:relative;display:grid;place-items:center;width:150px;height:150px}
+#jl-loader .jl-loader-aura{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(197,140,115,.20),transparent 62%)}
+#jl-loader .jl-loader-logo{width:120px;height:auto;aspect-ratio:679/299;object-fit:contain;display:block}
+#jl-loader .jl-loader-bar{width:100%;height:2px;background:#EFE7DC;border-radius:2px;overflow:hidden}
+#jl-loader .jl-loader-bar i{display:block;height:100%;width:0;background:#8C4A42;border-radius:2px;transition:width .2s linear}
+#jl-loader .jl-loader-pct{font-family:system-ui,sans-serif;font-size:13px;letter-spacing:.2em;color:#8C4A42;direction:ltr}
+</style>
+<script data-cfasync="false">
+/* ⭐ مشغّل اللودر المستقل — بيشتغل قبل تحميل main.css/core.js
+   عشان الأرقام تتحرك حتى لو النت بطيء، من غير ما يقف على 00% */
+(function () {
+  var p = 0, iv = null, el = null, pct = null, bar = null;
+  function tick() {
+    p = Math.min(92, p + Math.max(1.5, (92 - p) * 0.18));
+    if (pct) pct.textContent = (p < 10 ? '0' : '') + Math.round(p) + '%';
+    if (bar) bar.style.width = p + '%';
+  }
+  function start() {
+    el = document.getElementById('jl-loader');
+    if (!el) { setTimeout(start, 60); return; }
+    pct = el.querySelector('.jl-loader-pct');
+    bar = el.querySelector('.jl-loader-bar i');
+    if (!iv) iv = setInterval(tick, 90);
+  }
+  window.__JL_LOADER_INLINE_STOP = function () { if (iv) { clearInterval(iv); iv = null; } };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
+<meta name="theme-color" content="#FDFBF7">
+<title>عوام — بوتيك العبايات · البحيرة</title>
+<meta name="description" content="عوام بوتيك عبايات في البحيرة — عبايات، دلنجات، واستقبال. أناقة تُليق بك في كل مناسبة مع توصيل مجّاني داخل البحيرة.">
+<link rel="icon" href="assets/img/brand/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/img/brand/favicon.png">
+<link rel="preload" as="image" href="assets/img/brand/awam-wordmark-brown.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="assets/css/main.css?v=20261102v7">
+</head>
+<body data-page="home">
+
+<!-- ============ LOADER ============ -->
+<div id="jl-loader">
+  <div class="jl-loader-inner">
+    <span class="jl-loader-aura" aria-hidden="true"></span>
+    <div class="jl-loader-logo-wrap">
+      <!-- ⭐ اللوجو مدمج جوه الصفحة (5KB) بدل ما ينزل من الشبكة — كان بينزل 116KB على 3G ويتقص أثناء التحميل -->
+      <img class="jl-loader-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAABqCAMAAAC1diyFAAAAYFBMVEVdMStzKyloNjBrODGaUEtmY2NuVhj/AACLTDuKSEE9NjWDRD18QTqERT17QTmOSkKERT6MSkJ7QTrtbWmZNTX/////pWH/oZ7//wAA/wB/AH8Af3///3///6oAAABlNS+MQ+xBAAAAIHRSTlP3EZ1gFQMPARrxBaJgW5tX8qDmBQcBBAUBAQICAgMA/SgmMj8AABD+SURBVHja3Z2JgtyorkARCEyVt9q6k3kL/v+/vBJ4AbxXapK85zuZ6VR3Yw4SkhCCK0A557QDcIX7+ANqeMD9JY9Q0nFnQOLH27462Q0POPOXAIN1rqA/EkjO/6+BC4foCmGN00UFTqmPd+lvBAZhLal0pVyv2gfmpdYQHvri/5ZKa+t+CkZwpimMtPtWC2aEcNV/FzBLY+ytyfpr0YkCSGbQlE7u9Uhf+d9IlleGh2yvt3Tw68DGUD+vxivO+yNTXPuu/Pj+fv5v33LcO2OdQBoQYIWWatNqefUFJUQXP0Iq+KJvLnYSjgGP3Zz6Be+4SC9ZkoeUouP/kUj84IGOdVp401WAMGoLmNsyMoUdodnJwpvAhe8TjbpixfEe2/+gOesytJdH3kXhOzeAFc6+hNdKNtKwYbW0eyrZrT/k09z1HeDrUjdZbaZeHnQI7rXQQ98uqe7YlrFiGGiJUuvVwVOi234kvCFhahhXBpJ76eC4dGGph0KEGSioseH1pNJF6JuSsKbOILv9J2r0mNGCK0llvT3uJRzl3RCIh5bj+4VXbQ+1PInpnSpvQYr+yYV8PQFsdvVGQJDGXjzhVrREjB2mP6YfPTGG9WQyFkZUZ+Ll+dW293uLiG2VTb6sgT0Jy1z9ZmOojogX1ZIqT8/YAz0sHiyNEhRkJOcSvlIsluCaH+y+0fsosu/U6/j70uFBYJ3ojZCyojF0eM/GUILbi+by+UYKKGsSCT1ti23ZyJ45dEFQhGX7iToHhoRXSJJrH8jo0fUm+pRY+nXgIrZnZKCwfWKLBgzyG+IGxXWTmBS1yy28Vz6EmqVisSboSnlJG1Z/QcskNBxPG3pvtiaGRAzSIM6mjwb8VivEGxIuZGSc8Jm+9keMvEkMmX0RJNuok8Ht0K8/25I0x/eNgR3JWBOwzJIAZIRE1BauOgpYJl4DBo1Tu9JLgiTl+1mgNy5PlZiu4hgv4d6tBy0ougrvK3SIfrGtVcdWWfC6MCwgZD5hTKTPQrUG1/2WWLJca8A6+ly27VKDX5EBF2b9vakfY9ti1u26b4eAJdYcKXu/BPE8wxjjuTGVrl8mevGYSVgBjj+WqPdlJxeiuCDHxL6VrXGrykA/PPhhpbDkwFupSq2ZHCGf23F7PNbipYsN4GvEws0W+8QrUf414W1b82V2ehkBk5ql0bRJ3og765dMIrgOTFZ+GhqLG6nDyHLBfCFOkzNxD609mNMiYFuzhCVYGS3zon6RIHZjvMTP9HSLwCb6UD03F/KbSp15ELSAh4GxZjtJ6yZpRxFjrNAHQtrEIfaasgSMsUJvulidirjYMlgCD8o3uKW6Anb3hZvMtI7bU88DK7VkxAPeooSv0Tji4SFULvtZeMYRUYWHM0g+8KgctuydVDUAxxoqjqVXYicWYrYFYP2lIoj/3omSIxFnPJgotDqRU/cSrq8GeQE6+qVUwMteYR7Vqsw1LUk4ahde21MFU0MNqT7FAkYHp4Dtl6traaAwspg7FGGPtpaIGJaAE5eEu+3aXGcWB1coPLFNRMCW815SVLz0WbAI6ujwXb8yO7cg4SiW2W/XrBpOiIaiO7dJJIDzrUBtU2T5Iqv1c26ADidaVDoPZsDJTIE3JolbMKnduT0iwZkdy6lNxanaIIg4qJQnmss85wz4es4U6jVFS8zZWnS6KmHWZBKyZYUOVgs2HcIG7/9EET9SfIm5o4oHsoDzVmG0Z91pmzrNYQrbfvqF/EO5qgnAM5d6DDidczoHPjuQyYhFA5T0T5zceRZ9HKekaqSzFXcj6TjuJNDWJzHMgU8O5DXKE3TPxWXN2lJqB7jwwbQAaJivSNzBNixszbkMOIsk9AGrtWimdbJufQs4bKRI4xo84JR6Z+3My+LmnJtJOJrjR1xnAnxdfE13dh9fDMooeWvHNa/ZUhQWlbjwuUtb1+lU3AL+p4j+fiheXQZOF99ni0dEtL1AfqmBme3JW0T0aU5b+5GtqmSEE3eWuSXjzIeA4zj6+S6wIo3eBSa7WRsgwYKrjE8LYmVi5Yx0DfO9pST19QvAaVz5o3gHGEBVvFlpGpN1OwPG2oZ0WO0lW7i6rBws+CXx7wGnOW132i3pkD5RqmoUNJABm7hBw1voPkS0rd/6c+2lblaBszn8OWDxS8BewCRfsA0xbwL/U9R9ZsEW2vuH9lI20yT+XcC/JGGo/FqJO6QqNQO2SYNQDZbLG66CJHyJ7PiUFxIUscBfCtyRMnPawxoJsoTtOVybJJS090uT6MC4Qzm6Jb+TJf6mOUwrpBpk1Vr6qik3jZZ2dRIg4eVSSht98LUELCbgSeE/AizecUuFz9z5OjwJalvCFG3UQ/ABgLxPnG0q54GH6IKAgx+OFznovn4dWLzjh1VV8bpQE3WlSi/AVZXmfTd8MXHB+nxvaVkZL1NtNwPuO+ZDy5c4uXjY88PinUhLqfr29JsOSjXBx4jV0JKUuu73I8leXZSM00m8WhLp4kH02/E9n4wbNm9LWHXD1r7o1OlYmgJKhS9JGOSV5A4wF6I2NRrb3i/3O/Nqt7I7E4CHZ1geijPWZhlYD8Ce+Q1giq/YYHFa2gs6WcUtGJeqqdqyvF8ulWwLvZ0AyIBBTJUmB5ZL19jNXSNLMpRxvLUe5iVDAK5qD5wG5zPj4osjyrIkA23SndviO+J5+hRPAlxwikecWBAvAztt/UzpHcBpt1RJvNV+W7xeAp4bFy6LkuW9lFUuJAjTyhdGuesM2AOIEyt3//PCo8XAfTOjTsM5YJC6qVjOZIFVAI73IdVCsu3qDMm4yad3P1C9kZpLOM0Bif2ODsAiBZ4m8TtZS3eVrmI1taGoNpewWE7Xmccj37Pt537oHoYcXAqcZOU62CVeAfaqNJVgwSkRs4RdWZPIyMpiD5yUEsByfR7k5rH/tdA/HvY5cJp+U1q/Cdx//lZ0KQi1qGtnOcJsYQH4aCa+jwd6vkUJZ03rN1U60+lzIhYOJZR8qkU5uyjhbnlvLi9cL7QRgynp5LdbBE7tw665WVXp4immpskjXM8AW3lFWgDIh7NhDufVbcdUJgg4n7E5MI2TOD6L1+dwFHucDD6oJ9K8vL2iWMuHlmmQfzCFDGBGhSbD+V8rEk4TUvLrTWC/+xURn8jVMjBwHoOATV/zkORQ6Hn83BcxRCa6AzRrwE4/jyv1OnAaXlL0UZwBptnLRS0vWAOu3OvYVmnoQI+xDLxWtncO2A9wVB4sV86ZrEjYn++R4U+WAfBfPezOZPObLCNcv4JaBqaxg+4g8RawGXyxGLaE4CiwAi4u/ZJQWGH7KuqpQ90BYh2KE/qeDcU5MXAcodq0IGWj5Q3goFMxMRxbRXBpfGUrf+iBPNQrT+33lbwPs1nEG3a3wutVvNu5BJwVh9Nr9RvAbP7ykvcjQiZgMlcl+ixPX+MRAyuYmjNrvCCiunsEvQOcEculI377wPF3hQ8BFDi9iyx4H01bv+ijhVM4SxwDj18rs9icmSLb4JHsroTzkwUynNk+C0yhsIzPN/RLRb1usPkwoQfGErheeqjTSoHHv7BVM2lzLMz4rb0HngOLzFOCS0tDIbSmTwFraKVIiKkhXr1f55LR/dIdBe8MG87O2gZUqEOAtB5ycpz+PGY4SKs1+Fa/QCS8WBQrEs6XGlk1uxr8NMRPBAwLTyZjP7OUHUKh8enf+VRKKF79UTd5bSOHWsvYVfL3I2FIlVRxhvNgY5+4hvfnkoQXKicAsJb5+QyT/1gEvKylP6r5mR0pZzYBjZLcVsfAtBRG9GnpGFiMwAX8SNRPAfkxa8cjgxMvmrwmZfjeYrT7xEp08zM48RNprFx7smNKYt5OSJoEH+KB2RG/nOpzljmw31vcOOg2PBWmxzEi4JWCa+CzXtsH/GbnrTa7IJZ/PLLlQEDPxtlwhljFwP2UGBN3W6/iEcW8dnIClqsF9Xp+vO0wxvpPrT/qKciMS4M1Az8i4NHSTzZGrOKSNlfzEvwRWOFanGv4gGtbl1J2R1F+hVfWreVUmqz8zQfQ2X7baASebAXoL5yQRfoyPh5lZwanCHtLot46QMDfsm3b1v5g9xHq93mblpSQgRvli3HMFnBv14dzfJNxIOtA/b2uFdIJtXQwKZEymzOL1Mi9rRqp1HB2VSnVLdGKt4hlg204twSuZGByrMPJtDVg6tkPhGD0BtiKusn7aUWxCCxrtPuX3oRg2iJ5i3BK8n650D+XVpyepGu093sLQ9ayv7NEuz3gEP/5/UnLFVpcwoR26/Q6BVQH82vjzQTwMhRQtLUl7FjCqnz3qVs+ZmpxOLdEeA2nKHy+w+XAC6u362IN4k6J4oGn4PhNL4Yd9PBm5ZGnvfdf3MdPkkEXYdlgdZC03gf2AEPHtC62Ez9vPhSiWoBYKe8G7ebDE4IjqBeyBaW/Y/gFni96CtOFP2bJmgfjGY8dCf+mR+tYwLI++mu7adp/CLhfI/V0OGXI/hwwzbHY7Nyq4lXsPKRuhS9OSD+e1WkVvF3qwhVEkGd94U8BczlzJOCb+dDtV94Kh+osMl5zYPuHgDktGMcMt081LHzCpQeWOXAnvv6YgONwQ97LAj4GTHx1CPHkkIcZzYX8QwK+Jgotqpv91H1uHrjirCUFRuPlNGPK9w/ZrGTviIb9cvtYP4QmP1WpUBvbH6eNNm4+f1HeQd4kMiwvtcOPAdNSFZoe2NtkrlzPNhH+qHxZwKA/aLQKZxoeQBy3lsblsNTX3497zXjF5VJ9TMDeLX1hw5Ik4P7Ykpqm8G8HJlGmuVdSaPk53gDMjrjwR1scJBtz5nfbLM1Z426m0MXnuiEM56IU6zKOifhRoz9jso6aAcb6Utm6Xl0u8pOWU2hLBsGfhccQW+pYoz/1Js7b74CzuXgqkaUxJPHaT94iK/iuRz5kif46Hg7pRo3u8LxCzj8zU381AC4m9PSVbQUq0c15b591jcL6W7FCFE3/4ZTGtFI6ccVk7zj4LETCRIvS1tZ3w1dJRNsO/YbNtBFi+muq4oiSeR+V/agdIQnbwtlG8xaJlj6yFqPJOp6s8Dlmv+CGV9j2iWsQbFvXzePRlI1qDeB3+tvfRkWXckW8DfFK/Gwk4C8BRF4ggg+mpx27ExVu7MSxvs9T05xp4KuenOFLvepSdIRAD+9/lBWAaqScX0U5qHN5ud0aNJ+945XWfy31159NITNNX75Et7L/tT5zLdfJExHUZeMfoqnMqL8sfwS+Sa8t5ePGD2NvbJ10Yfo+5PErWI4Cg+MklzfTnJJ3o41WxxKOLN26bW1Vlaqsq/5RVUnCa2Rd2bEACO8ll9Hf+fKybhW363E5B/do8OOxrSg0ZzCrHnjaVhLPI7w8D+qyJsFW82u+0BA6ibyqWP7o080+n3hvms3NMcm4pAXqs7ea893hBOwNq+Gzk8h1xKob9p8PiRfrsmzq/uxSMLzGp1tH82uhYh0v/U2EhHsL1Hwb4bI609xl3Juo8bNrNUMNDsdpTeknI2l2H8ceiqLB2fIRLpLFxXwtrT0DNsmaoO/3JIV8u/MVjHIMJfm2x4YtlZ/kskXz4bUpQkgAIF96AAxc1f1GsPw+NIHbW2P6hjZ8VthJAWK+lWVA5Wf4ovSGTtKA3Mbn0fxbYbzgu+8Mspmm8bRlX+WFR3wBVo/KHbslOFhqbUjOt/J+u0xoscSHTx5NhejcvwRMsSXw8UNfgDScKT3gDDRImvL6uNYF7WZL1kScDO9R/X/5gwfZOPt5Ur5cmt4uXCg4Cyam/z+iOHLbmr8J46xRMUG7KbJSvCdc0z/p09ZKmQOnEt96XhRq4H8A7PQs6yQMIjMAAAAASUVORK5CYII=" alt="عوام" width="240" height="106" decoding="sync">
+    </div>
+    <div class="jl-loader-bar"><i></i></div>
+    <div class="jl-loader-pct">00%</div>
+  </div>
+</div>
+
+<div id="site-header"></div>
+
+<main>
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="hero-background" aria-hidden="true">
+      <img src="assets/img/hero-abaya.jpg?v=20261102v7" alt="" width="3100" height="4039" fetchpriority="high" decoding="async">
+    </div>
+    <div class="hero-shade" aria-hidden="true"></div>
+    <div class="container hero-inner">
+      <div class="hero-copy">
+        <span class="eyebrow reveal">AWAM · BOTIQUE</span>
+        <h1 class="hero-title reveal" data-delay=".08">
+          عبايات تليق<br>
+          <em>بأناقتك</em>
+        </h1>
+        <p class="lead reveal" data-delay=".16">
+          عبايات يومية ودلنجات فخمة وقطع استقبال مطرزة بأجود الأقمشة.
+          حددي قطعتك، اختاري المقاس واللون، وأمري عبر واتساب.
+        </p>
+        <div class="hero-actions reveal" data-delay=".24">
+          <a class="btn" href="shop.html">تسوّقي التشكيلة</a>
+          <a class="btn btn--ghost" href="index.html#collections">الأقسام <span class="en">→</span></a>
+        </div>
+        <div class="hero-badge reveal" data-delay=".3">
+          <span>✦</span><b>توصيل مجّاني داخل البحيرة</b><span class="muted tiny">· دفعة مقدمة ٥٠٪ فقط</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ============ -->
+  <div class="band">
+    <div class="marquee" id="marquee">
+      <span>أقمشة فاخرة</span><span>مقاسات مريحة</span><span>تفصيل مخصص</span><span>توصيل مجّاني</span>
+      <span>عربون ٥٠٪</span><span>تغليف هدايا</span>
+      <span>أقمشة فاخرة</span><span>مقاسات مريحة</span><span>تفصيل مخصص</span><span>توصيل مجّاني</span>
+      <span>عربون ٥٠٪</span><span>تغليف هدايا</span>
+    </div>
+  </div>
+
+  <!-- ============ PRODUCTS ============ -->
+  <section class="section" id="products">
+    <div class="container">
+      <div class="section-head">
+        <div class="stack">
+          <span class="eyebrow reveal">أحدث القطعة</span>
+          <h2 class="title-lg reveal" data-delay=".06">جديد عوام</h2>
+        </div>
+        <a class="link-u reveal" href="shop.html">تسوّقي الكل <span class="en">→</span></a>
+      </div>
+
+      <div class="grid-products" id="homeGrid">
+        <div class="skeleton" style="aspect-ratio:4/5"></div>
+        <div class="skeleton" style="aspect-ratio:4/5"></div>
+        <div class="skeleton" style="aspect-ratio:4/5"></div>
+        <div class="skeleton" style="aspect-ratio:4/5"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ COLLECTIONS ============ -->
+  <section class="section section--soft" id="collections">
+    <div class="container">
+      <div class="section-head">
+        <div class="stack">
+          <span class="eyebrow reveal">الأقسام</span>
+          <h2 class="title-lg reveal" data-delay=".06">اختاري قسمك</h2>
+        </div>
+        <p class="muted tiny reveal">كل قسم، متعهد بعناية عشان يليق بيكي</p>
+      </div>
+      <div class="grid-collections">
+        <a class="coll reveal" href="shop.html?cat=%D8%B9%D8%A8%D8%A7%D8%A9%D8%AA">
+          <img src="assets/img/products/abaya-1.jpg?v=20261102v7" alt="عبايات عوام" loading="lazy" decoding="async">
+          <span class="coll-label"><b>عبايات</b><span>DAILY</span></span>
+        </a>
+        <a class="coll reveal" data-delay=".06" href="shop.html?cat=%D8%AF%D9%84%D9%86%D8%AC%D8%A7%D8%AA">
+          <img src="assets/img/products/abaya-3.jpg?v=20261102v7" alt="دلنجات عوام" loading="lazy" decoding="async">
+          <span class="coll-label"><b>دلنجات</b><span>LUXURY</span></span>
+        </a>
+        <a class="coll reveal" data-delay=".12" href="shop.html?cat=%D8%A7%D8%B3%D8%AA%D9%82%D8%A7%D8%A8">
+          <img src="assets/img/products/abaya-4.jpg?v=20261102v7" alt="استقبال عوام" loading="lazy" decoding="async">
+          <span class="coll-label"><b>استقبال</b><span>EVENTS</span></span>
+        </a>
+        <a class="coll reveal" data-delay=".18" href="shop.html">
+          <img src="assets/img/products/abaya-5.jpg?v=20261102v7" alt="كل المنتجات" loading="lazy" decoding="async">
+          <span class="coll-label"><b>كل المنتجات</b><span>ALL</span></span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STORY ============ -->
+  <section class="section" id="story">
+    <div class="container split">
+      <div class="split-media reveal">
+        <img src="assets/img/atelier.jpg?v=20261102v7" alt="أتيليه عوام — تفصيل العبايات" loading="lazy" decoding="async">
+      </div>
+      <div class="split-copy">
+        <span class="eyebrow reveal">من نحن</span>
+        <h2 class="title-lg reveal" data-delay=".06">أناقة بلا<br>تكلّف</h2>
+        <p class="lead reveal" data-delay=".12">
+          عوام بوتيك في البحيرة: محل عبايات يجمع بين الأناقة والراحة.
+          قطعنا بتتفصّل من أجود الأقمشة — ساتان، كريب، شيفون، ومخمل — بتفصيل يُليق بكل قوام وكل مناسبة.
+        </p>
+        <div class="steps reveal" data-delay=".18">
+          <div class="step">
+            <span class="step-num en">01</span>
+            <div><h4>اختاري قطعتك</h4><p>صور واضحة، أسعار صريحة، وتفاصيل الخامة.</p></div>
+          </div>
+          <div class="step">
+            <span class="step-num en">02</span>
+            <div><h4>اختاري المقاس واللون</h4><p>مقاس متوفر أو تفصيل مخصص حسب طلبك.</p></div>
+          </div>
+          <div class="step">
+            <span class="step-num en">03</span>
+            <div><h4>أكملي الطلب على واتساب</h4><p>هنتسلّم كامل تفاصيل طلبك: المنتج، المقاس، اللون، وطريقة الدفع.</p></div>
+          </div>
+        </div>
+        <a class="btn btn--ghost reveal" data-delay=".24" href="shop.html">ابدئي التسوّق</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section section--soft">
+    <div class="container">
+      <div class="section-head">
+        <div class="stack">
+          <span class="eyebrow reveal">خدماتنا</span>
+          <h2 class="title-lg reveal" data-delay=".06">ليش عوام؟</h2>
+        </div>
+      </div>
+      <div class="features">
+        <div class="feat reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M4 8.5 12 4l8 4.5-8 4.5-8-4.5Z"/><path d="M4 12.5 12 17l8-4.5M4 16.5 12 21l8-4.5"/></svg>
+          <b>أقمشة فاخرة</b><p>ساتان حريري، كريب مطفي، شيفون، ومخمل — مختارين عشان الشعور والتألق.</p>
+        </div>
+        <div class="feat reveal" data-delay=".06">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M12 3v18M6 8l6-5 6 5M6 16l6 5 6-5"/></svg>
+          <b>تفصيل مخصص</b><p>مقاس خاص بيتفصّل ليكي بعد الطلب، مع صورة المقاسات لو حبّيتي.</p>
+        </div>
+        <div class="feat reveal" data-delay=".12">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M3 7h11v10H3z"/><path d="M14 10h4l3 3v4h-7z"/><circle cx="7" cy="19" r="1.6"/><circle cx="17.5" cy="19" r="1.6"/></svg>
+          <b>توصيل مجّاني</b><p>توصيل سريع داخل البحيرة، مع تحديثات عبر واتساب.</p>
+        </div>
+        <div class="feat reveal" data-delay=".18">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg>
+          <b>استرجاع سهل</b><p>استرجاع أو استبدال خلال ١٤ يوماً بشرط ألا تكون القطعة مستخدمة.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CTA / CONTACT ============ -->
+  <section class="section section--copper">
+    <div class="container" style="display:grid;gap:18px;text-align:center;justify-items:center">
+      <span class="eyebrow reveal" style="color:rgba(255,255,255,.85)">تواصل معنا</span>
+      <h2 class="title-lg reveal" data-delay=".06">عندك استفسار عن قطعة؟</h2>
+      <p class="lead reveal" data-delay=".12">كل الطلبات بتوصل على واتساب عوام — هنردّ عليك خلال دقائق.</p>
+      <div class="hero-actions reveal" data-delay=".2" style="justify-content:center">
+        <a class="btn" href="https://wa.me/201129196650" target="_blank" rel="noopener" style="background:#fff;color:var(--brand-hover)">تواصل على واتساب</a>
+        <a class="btn btn--ghost" href="shop.html" style="--btn-fg:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.6)">تسوّقي الآن</a>
+      </div>
+      <p class="tiny reveal" data-delay=".26" style="color:rgba(255,255,255,.8)">📍 البحيرة — مصر · ⏰ ١٠ ص – ١٠ م</p>
+    </div>
+  </section>
+</main>
+
+<div id="site-footer"></div>
+
+<script data-cfasync="false" defer src="assets/js/config.js?v=20261102v7" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/env.js?v=20261102v7" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/core.js?v=20261102v7" type="text/javascript"></script>
+<script data-cfasync="false" defer src="assets/js/index.page.js?v=20261102v7" type="text/javascript"></script><!-- أمان: لو أي ملف JS فشل في التحميل، الـ loader مايقفلش الموقع للأبد -->
+<script data-cfasync="false">
+setTimeout(function () {
+  if (window.JL) return;
+  var l = document.getElementById('jl-loader');
+  if (l && l.parentNode) l.parentNode.removeChild(l);
+  document.documentElement.classList.add('is-ready', 'jl-loaded');
+  var rv = document.querySelectorAll('.reveal, .reveal-lines');
+  for (var i = 0; i < rv.length; i++) rv[i].classList.add('is-visible');
+}, 6000);
+</script>
+<script data-cfasync="false">
+/* ⭐ إغلاق اضطراري: السكربت ده بيتنفّذ بعد تحميل main.css بالكامل
+   (المتصفح بيوقف تنفيذ السكربت لحد ما الستايل يجهز).
+   لو core.js اتأخر على شبكة بطيئة، البوابة بتفتح من غير ما اللودر يعلّق. */
+(function () {
+  function bail() {
+    if (document.getElementById('jl-loader') === null) return;
+    if (window.JL && window.JL.loader) return;          /* core.js جه — سيبه هو يقفل */
+    document.documentElement.classList.add('is-ready', 'jl-loaded');
+    var l = document.getElementById('jl-loader');
+    if (l && l.parentNode) l.parentNode.removeChild(l);
+    var rv = document.querySelectorAll('.reveal, .reveal-lines');
+    for (var i = 0; i < rv.length; i++) rv[i].classList.add('is-visible');
+  }
+  setTimeout(bail, 1400);
+})();
+</script>
+</body>
+</html>
