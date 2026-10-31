@@ -28,7 +28,7 @@ window.JL_CONFIG = {
 
   /* -------- كسر الكاش -------- */
   // كل ما تعدّلي أي ملف JS/CSS، غيّري الرقم ده + غيّري ?v= في ملفات HTML
-  ASSET_VERSION: "20261103v1",
+  ASSET_VERSION: "20261104v1",
 
   /* -------- الأسرار (لا تشاركها) -------- */
   ADMIN_TOKEN: "awam_secure_2026",      // الرابط السري:  index.html?admin=awam_secure_2026
@@ -48,14 +48,31 @@ window.JL_CONFIG = {
   BUCKET_SIZES: "size-guides",         // (قديم) دليل المقاسات بقى لينك يدوي
   BUCKET_MEASUREMENTS: "measurements",  // صور مقاسات العملاء
 
-  /* -------- جداول قاعدة البيانات -------- */
-  TABLE_ITEMS: "awam-data",              // ⭐ جدول المنتجات (اسمه فيه شرطة — فيه بديل آمن)
+  /* -------- قاعدة البيانات: كل حاجة في جدول واحد -------- */
+  /* ⭐ مفيش أي جدول مشترك مع أي موقع تاني.
+     المنتجات + الطلبات + الكوبونات + الإعدادات كلهم في جدول "awam-data"،
+     والعمود kind هو اللي بيفرّق بينهم: product / order / coupon / setting.
+     شغّل supabase-update-5-all-in-awam-data.sql مرة واحدة في Supabase. */
+  TABLE_ITEMS: "awam-data",              // ⭐ الجدول الوحيد (اسمه فيه شرطة — فيه بديل آمن)
   TABLE_ITEMS_FALLBACK: "awam_data",     // فيو/جدول بديل بنفس البيانات — بيتجرّب تلقائيًا لو
                                          // الاسم اللي فيه شرطة اترفض من PostgREST
   TABLE_LEGACY_ITEMS: "items",           // الجدول القديم — مقروء فقط
-  TABLE_ORDERS: "orders",
-  TABLE_SETTINGS: "awam_settings",      // ⭐ إعدادات المتجر (أسعار الشحن) — اسم مخصص لعوام عشان ميتعارضش مع أي موقع تاني على نفس المشروع
-  TABLE_COUPONS: "coupons",           // كوبونات/خصومات (شغّل supabase-update-2.sql)
+  TABLE_ORDERS: "awam-data",             // ⭐ الطلبات جوه نفس الجدول (kind = order)
+  TABLE_COUPONS: "awam-data",            // ⭐ الكوبونات جوه نفس الجدول (kind = coupon)
+  TABLE_SETTINGS: "awam-data",           // ⭐ إعدادات الشحن جوه نفس الجدول (kind = setting)
+  /* جداول قديمة (مشتركة مع مشاريع تانية) — بنقرا منها بس في حالة إن الجدول
+     الموحّد لسه مش متظبط، عشان الموقع ميقفش قبل ما تشغّل ملف الـ SQL. */
+  LEGACY_ORDERS_TABLE: "orders",
+  LEGACY_COUPONS_TABLE: "coupons",
+  LEGACY_SETTINGS_TABLE: "awam_settings",
+  /* أنواع الصفوف جوه awam-data */
+  KINDS: {
+    PRODUCT: "product",
+    ORDER: "order",
+    COUPON: "coupon",
+    SETTING: "setting"
+  },
+  COUPON_RPC: "awam_validate_coupon",   // دالة التحقق من الكوبون (جوه awam-data)
 
   /* -------- الهوية والتواصل -------- */
   CITY: "البحيرة — مصر",

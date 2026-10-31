@@ -3,7 +3,7 @@
    بيانات العميل → مقاسات → طريقة الدفع → BUY
    ثم: رسالة واتساب كاملة + حفظ الطلب في Supabase (اختياري)
    ============================================================ */
-const { CFG, $, $$, ON, util, cart, sb, toast, modal, buildOrderMessage, waLink, icons, coupons, settings } = window.JL;
+const { CFG, $, $$, ON, util, cart, sb, toast, modal, buildOrderMessage, waLink, icons, coupons, settings, pendingOrders } = window.JL;
 
 const measures = [];   // صور المقاسات (تُرفع قبل الإرسال)
 function readMeasureFields() {
@@ -71,6 +71,9 @@ function renderSummary() {
   $('#cShip').textContent = ship ? util.money(ship) : 'مجاني';
 
   /* الكوبون */
+  /* أي طلب قديم لسه ما اتحفظش → بنحاول نبعته تاني */
+  try { pendingOrders.flush(); } catch (_) {}
+
   $('#cCouponBlock').innerHTML = window.JL.couponBoxHTML();
   const bd = coupons.breakdown(items);
   const row = $('#cDiscountRow');
@@ -185,10 +188,10 @@ async function placeOrder() {
     }
   }
 
-  /* حفظ الطلب في القاعدة */
+  /* ⭐ حفظ الطلب في awam-data (kind = order) — نفس جدول المنتجات، ومفيش جدول مشترك */
   const measureData = readMeasureFields();
-  try {
-    await sb.insert(CFG.TABLE_ORDERS, {
+  const orderRow = {
+      kind: (CFG.KINDS && CFG.KINDS.ORDER) || 'order',
       code,
       customer_name: name,
       phone,
@@ -208,9 +211,14 @@ async function placeOrder() {
       coupon_code: coupons.get()?.code || null,
       total: cart.subtotal() - cart.discount() + getShippingFee(),
       measurement_urls: uploaded
-    });
+  };
+  try {
+    await sb.insert(CFG.TABLE_ITEMS, orderRow);
   } catch (e) {
-    console.warn('order save skipped:', e.message);
+    /* مفيش كتابة في أي جدول تاني: بنحفظ الطلب في المتصفح ونحاول تاني بعدين */
+    console.warn('order save (awam-data) failed:', e.message);
+    pendingOrders.add(orderRow);
+    toast('الطلب اتجهّز — لو النت قطع، ابعته على واتساب وهنأكده لك.', 'warn');
   }
 
   /* رسالة واتساب */

@@ -7,7 +7,7 @@
    ============================================================ */
 (() => {
   'use strict';
-  const { CFG, $, $$, ON, util, sb, admin, products, toast, icons, normalize, settings } = window.JL;
+  const { CFG, $, $$, ON, util, sb, admin, products, toast, icons, normalize, settings, KINDS: K } = window.JL;
 
   if (!admin.isAdmin()) {
     document.addEventListener('jl:open-admin', () => {
@@ -28,7 +28,8 @@
     editingId: null,  // null = منتج جديد
     tab: 'new',
     productsCache: [],
-    couponsCache: []
+    couponsCache: [],
+    editingCouponId: null
   };
 
   const bootAdmin = () => {
@@ -327,8 +328,11 @@
 
           <button class="btn btn--ghost btn--block" id="logoutAdmin">إيقاف وضع الآدمن في هذا المتصفح</button>
           <div class="admin-note">
+            <b>كل حاجة في جدول واحد:</b> المنتجات والطلبات والكوبونات والإعدادات كلهم في جدول
+            <b class="en">awam-data</b> (العمود <b class="en">kind</b> بيفرّق بينهم) — مفيش أي جدول مشترك مع موقع تاني.
+            <br><br>
             <b>ملاحظة تقنية:</b> الحماية ٣ طبقات: رابط الرمز، دالة الآدمن في القاعدة، وسياسات RLS على
-            الجداول والـ Storage. Supabase بترفض أي محاولة كتابة من زوار عاديين.
+            الجدول والـ Storage. Supabase بترفض أي محاولة كتابة من زوار عاديين.
           </div>
         </div>
       </div>`;
@@ -635,6 +639,7 @@
       msg.textContent = state.editingId ? 'جارٍ حفظ التعديلات…' : 'جارٍ حفظ المنتج…';
 
       const row = {
+        kind: K.PRODUCT,          // ⭐ كل حاجة في awam-data — ده صف منتج
         title,
         title_en: $('#fTitleEn').value.trim() || null,
         description: $('#fDesc').value.trim() || null,
@@ -675,6 +680,12 @@
           delete fallback.offer_ends_at; delete fallback.offer_label;
           saved = await save(fallback);
           toast('تم الحفظ. شغّل supabase-update-2.sql لوقع العروض المحدودة.', 'warn');
+        } else if (/kind|42703|column .* does not exist/i.test(e1.message)) {
+          /* الجدول لسه مفيهوش عمود kind — بنحفظ المنتج زي الأول */
+          const fallback = { ...row };
+          delete fallback.kind;
+          saved = await save(fallback);
+          toast('تم الحفظ. شغّل supabase-update-5-all-in-awam-data.sql لتوحيد البيانات في جدول awam-data.', 'warn');
         } else throw e1;
       }
 
@@ -815,7 +826,7 @@
     btn.disabled = true;
     let saved = 0, skipped = 0, failed = 0, changedProducts = 0;
     try {
-      const rows = await sb.items.select('select=*&order=created_at.desc');
+      const rows = await sb.kind.select(K.PRODUCT, 'order=created_at.desc');
       const list = (rows || []).map(normalize);
       say(`جارٍ الفحص… 0/${list.length}`);
       for (let idx = 0; idx < list.length; idx++) {
@@ -870,7 +881,7 @@
     const box = $('#adminList');
     box.innerHTML = '<div class="skeleton" style="height:56px"></div>';
     try {
-      const rows = await sb.items.select('select=*&order=created_at.desc');
+      const rows = await sb.kind.select(K.PRODUCT, 'order=created_at.desc');
       state.productsCache = (rows || []).map(normalize);
       if (!rows?.length) { box.innerHTML = '<p class="tiny muted">مفيش منتجات في القاعدة بعد.</p>'; return; }
       box.innerHTML = rows.map(r => {
@@ -900,8 +911,9 @@
     const box = $('#ordersList');
     box.innerHTML = '<div class="skeleton" style="height:56px"></div>';
     try {
-      const rows = await sb.select(CFG.TABLE_ORDERS, 'select=*&order=created_at.desc&limit=50');
-      if (!rows?.length) { box.innerHTML = '<p class="tiny muted">مفيش طلبات بعد.</p>'; return; }
+      /* ⭐ الطلبات بقت جوه awam-data (kind = order) */
+      const rows = await sb.kind.select(K.ORDER, 'order=created_at.desc&limit=50');
+      if (!rows?.length) { box.innerHTML = '<p class="tiny muted">مفيش طلبات بعد. (الطلبات بتتحفظ في جدول awam-data — شغّل supabase-update-5-all-in-awam-data.sql لو لسه مش مسغّل)</p>'; return; }
       box.innerHTML = rows.map(o => {
         const items = Array.isArray(o.items) ? o.items : [];
         return `<div class="order-row">
@@ -919,7 +931,7 @@
   async function loadProductsIntoPicker() {
     const box = $('#cpProducts');
     try {
-      const rows = await sb.items.select('select=id,title&order=title.asc');
+      const rows = await sb.kind.select(K.PRODUCT, 'order=title.asc', { select: 'id,title' });
       state.productsCache = (rows || []).map(normalize);
       if (!rows?.length) { box.innerHTML = '<p class="tiny muted">مفيش منتجات.</p>'; return; }
       box.innerHTML = rows.map(r => `<label><input type="checkbox" data-cp-id="${util.esc(r.id)}"> ${util.esc(r.title)}</label>`).join('');
@@ -948,10 +960,11 @@
     const cnt = $('#couponsCnt');
     box.innerHTML = '<div class="skeleton" style="height:64px"></div>';
     try {
-      const rows = await sb.select(CFG.TABLE_COUPONS, 'select=*&order=created_at.desc');
+      /* ⭐ الكوبونات بقت جوه awam-data (kind = coupon) */
+      const rows = await sb.kind.select(K.COUPON, 'order=created_at.desc');
       state.couponsCache = rows || [];
       cnt.textContent = state.couponsCache.length;
-      if (!rows?.length) { box.innerHTML = '<p class="tiny muted">مفيش كوبونات بعد.</p>'; return; }
+      if (!rows?.length) { box.innerHTML = '<p class="tiny muted">مفيش كوبونات بعد. (الكوبونات بتتحفظ في awam-data — شغّل supabase-update-5-all-in-awam-data.sql)</p>'; return; }
       box.innerHTML = rows.map(c => `
         <div class="coupon-row">
           <div>
@@ -966,7 +979,7 @@
       $$('#cpList [data-cp-edit]').forEach(b => ON(b, 'click', () => editCoupon(b.dataset.cpEdit)));
       $$('#cpList [data-cp-del]').forEach(b => ON(b, 'click', async () => {
         if (!confirm('حاولي تحذفي الكوبون ده؟')) return;
-        try { await sb.remove(CFG.TABLE_COUPONS, b.dataset.cpDel); toast('تم حذف الكوبون.', 'ok'); loadCoupons(); }
+        try { await sb.items.remove(b.dataset.cpDel); toast('تم حذف الكوبون.', 'ok'); loadCoupons(); }
         catch (e) { toast('فشل الحذف: ' + e.message, 'warn'); }
       }));
     } catch (e) {
@@ -985,6 +998,7 @@
       b.checked = Array.isArray(c.product_ids) && c.product_ids.includes(b.dataset.cpId);
     });
     updateScopeHint();
+    state.editingCouponId = c.id;
     $('#cpCancelEdit').classList.remove('hide');
     $('#cpMsg').textContent = 'تعديل الكوبون…';
   }
@@ -996,6 +1010,7 @@
     $('#cpActive').value = '1';
     $('#cpProducts').querySelectorAll('[data-cp-id]').forEach(b => b.checked = false);
     updateScopeHint();
+    state.editingCouponId = null;
     $('#cpCancelEdit').classList.add('hide');
     $('#cpMsg').textContent = '';
   }
@@ -1012,6 +1027,7 @@
 
     try {
       const row = {
+        kind: K.COUPON,           // ⭐ صف كوبون جوه awam-data
         code,
         percent,
         active: $('#cpActive').value === '1',
@@ -1019,25 +1035,24 @@
         starts_at: new Date().toISOString(),
         ends_at: endsAt
       };
-      if (state.couponsCache.find(x => String(x.id) === String($('#cpEditId')?.value))) {
-        // no inline coupon edit id stored — treat as new when editing via form values
-      }
-      // حفظ جديد أو تعديل حسب الكود الموجود
+      /* حفظ جديد أو تعديل حسب الكود الموجود */
       const existing = state.couponsCache.find(x => String(x.code).toUpperCase() === code.toUpperCase());
-      if (existing && !$('#cpEditId')?.value) {
-        await sb.update(CFG.TABLE_COUPONS, existing.id, row);
-      } else if ($('#cpEditId')?.value) {
-        await sb.update(CFG.TABLE_COUPONS, $('#cpEditId').value, row);
+      const editId = state.editingCouponId || (existing ? existing.id : '');
+      if (editId) {
+        await sb.items.update(editId, row);
       } else {
-        await sb.insert(CFG.TABLE_COUPONS, row);
+        await sb.items.insert(row);
       }
       toast('تم حفظ الكوبون.', 'ok');
       $('#cpMsg').textContent = '✓ تم الحفظ';
       $('#cpCancelEdit').classList.add('hide');
       loadCoupons();
     } catch (e) {
-      msg.textContent = '✕ ' + e.message;
-      toast('فشل الحفظ: ' + e.message, 'warn');
+      const hint = /kind|42703|column .* does not exist/i.test(e.message)
+        ? 'شغّل supabase-update-5-all-in-awam-data.sql في Supabase الأول عشان الكوبونات تتحفظ في awam-data.'
+        : e.message;
+      msg.textContent = '✕ ' + hint;
+      toast('فشل الحفظ: ' + hint, 'warn');
     }
   }
 })();
